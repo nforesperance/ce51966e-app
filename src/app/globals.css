@@ -136,7 +136,16 @@ input[type="datetime-local"].input {
 
 /* Prose overrides inside prayer-point body */
 .prose-prayer {
-  overflow-wrap: anywhere;     /* break long words / URLs that would overflow */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  max-width: 100%;
+  width: 100%;
+}
+.prose-prayer * { max-width: 100%; min-width: 0; }
+.prose-prayer pre,
+.prose-prayer code {
+  white-space: pre-wrap;
   word-break: break-word;
 }
 .prose-prayer h1, .prose-prayer h2, .prose-prayer h3 { color: var(--gold-soft); }
