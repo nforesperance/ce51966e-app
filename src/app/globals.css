@@ -38,16 +38,26 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 50% -10%, #163185 0%, transparent 60%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  background-color: var(--bg);
-  /* background-attachment:fixed janks on iOS as the URL bar hides. Use scroll on touch devices. */
-  background-attachment: scroll;
+  background-color: var(--bg-2);  /* uniform base — no gradient seams while scrolling */
   color: var(--fg);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;   /* disables the rubber-band / white area on iOS & Chrome */
+  overscroll-behavior-y: none;
+  position: relative;
+}
+
+/* Decorative glow at the very top of the viewport. Stays put as you scroll,
+   so long lists don't appear on a different shade than the header. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 520px;
+  background:
+    radial-gradient(1200px 520px at 50% -10%, #163185 0%, transparent 65%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .rule {
