@@ -17,6 +17,8 @@ type Task = {
   target_start_time: string | null;
   full_marks_window_minutes: number | null;
   zero_marks_window_minutes: number | null;
+  full_marks_end_window_minutes: number | null;
+  zero_marks_end_window_minutes: number | null;
   max_points: number | null;
   metadata: Record<string, unknown>;
   position: number;
@@ -237,6 +239,8 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
   const [start, setStart] = useState<string>(task?.target_start_time?.slice(0, 5) ?? "00:00");
   const [fullWin, setFullWin] = useState<string>((task?.full_marks_window_minutes ?? 5).toString());
   const [zeroWin, setZeroWin] = useState<string>((task?.zero_marks_window_minutes ?? 120).toString());
+  const [fullEndWin, setFullEndWin] = useState<string>((task?.full_marks_end_window_minutes ?? 5).toString());
+  const [zeroEndWin, setZeroEndWin] = useState<string>((task?.zero_marks_end_window_minutes ?? 120).toString());
   const [maxPts, setMaxPts] = useState<string>((task?.max_points ?? 100).toString());
   const initChapters = (task?.metadata?.chapters as string[] | undefined) ?? [];
   const [chapters, setChapters] = useState<string>(initChapters.join(", "));
@@ -255,6 +259,8 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
         body.target_start_time = start;
         body.full_marks_window_minutes = parseInt(fullWin, 10);
         body.zero_marks_window_minutes = parseInt(zeroWin, 10);
+        body.full_marks_end_window_minutes = parseInt(fullEndWin, 10);
+        body.zero_marks_end_window_minutes = parseInt(zeroEndWin, 10);
       }
       if (type === "reading") {
         body.metadata = {
@@ -317,18 +323,30 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
                   <input type="time" className="input" value={start} onChange={(e) => setStart(e.target.value)} />
                 </div>
               </div>
+              <p className="label">Start-time scoring</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="label block mb-1">Full marks window (± min)</label>
+                  <label className="label block mb-1 normal-case tracking-normal text-fg-muted">Full marks window (± min)</label>
                   <input type="number" min={0} max={1440} className="input" value={fullWin} onChange={(e) => setFullWin(e.target.value)} />
                 </div>
                 <div>
-                  <label className="label block mb-1">Zero marks at (min late)</label>
+                  <label className="label block mb-1 normal-case tracking-normal text-fg-muted">Zero marks at (min late)</label>
                   <input type="number" min={1} max={1440} className="input" value={zeroWin} onChange={(e) => setZeroWin(e.target.value)} />
                 </div>
               </div>
+              <p className="label mt-2">End-time scoring</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label block mb-1 normal-case tracking-normal text-fg-muted">Full marks window (± min)</label>
+                  <input type="number" min={0} max={1440} className="input" value={fullEndWin} onChange={(e) => setFullEndWin(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label block mb-1 normal-case tracking-normal text-fg-muted">Zero marks at (min late)</label>
+                  <input type="number" min={1} max={1440} className="input" value={zeroEndWin} onChange={(e) => setZeroEndWin(e.target.value)} />
+                </div>
+              </div>
               <p className="text-xs text-fg-muted">
-                Scoring: within ±{fullWin} min of target = full marks; linear decay to 0 at {zeroWin} min late. Must complete ≥ 90% of the duration.
+                Start on time AND finish on time. Final score = min(start ratio, end ratio) × max points. Must complete ≥ 90% of duration.
               </p>
             </>
           )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { LogOut, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function TopBar({ name, level }: { name: string; level: string | null }) {
@@ -24,9 +25,14 @@ export default function TopBar({ name, level }: { name: string; level: string | 
             {level && <div className="text-[11px] text-fg-muted">LEVEL {level.toUpperCase()}</div>}
           </div>
         </div>
-        <button onClick={logout} className="text-fg-muted hover:text-gold" aria-label="Log out">
-          <LogOut size={18} />
-        </button>
+        <div className="flex items-center gap-4">
+          <Link href="/history" className="text-fg-muted hover:text-gold" aria-label="History" title="History">
+            <History size={18} />
+          </Link>
+          <button onClick={logout} className="text-fg-muted hover:text-gold" aria-label="Log out">
+            <LogOut size={18} />
+          </button>
+        </div>
       </div>
       <div className="max-w-md mx-auto px-5"><div className="rule" /></div>
     </header>

@@ -1,82 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/session";
-import { todayInTz } from "@/lib/time";
-import TasksSection, { type UITask } from "./TasksSection";
+import { loadToday } from "@/lib/loadToday";
+import BottomNav from "@/components/BottomNav";
 
 export const dynamic = "force-dynamic";
-
-type TodayData = {
-  program: { id: string; name: string; timezone: string };
-  day: { id: string; day_number: number; date: string };
-  prayerPoint: {
-    title: string | null; body_markdown: string | null; image_url: string | null;
-    scriptures: { reference: string; text: string | null }[];
-  } | null;
-  tasks: UITask[];
-} | null;
-
-async function loadToday(userId: string): Promise<TodayData> {
-  const sb = supabaseAdmin();
-  const { data: memberships } = await sb
-    .from("program_participants")
-    .select("program_id, programs(id, name, timezone, start_date, end_date)")
-    .eq("user_id", userId);
-  if (!memberships?.length) return null;
-
-  for (const m of memberships) {
-    const raw = (m as { programs: unknown }).programs;
-    const p = Array.isArray(raw) ? raw[0] : raw as { id: string; name: string; timezone: string; start_date: string; end_date: string };
-    if (!p) continue;
-    const today = todayInTz(p.timezone);
-    if (today < p.start_date || today > p.end_date) continue;
-    const { data: day } = await sb.from("program_days")
-      .select("id, day_number, date").eq("program_id", p.id).eq("date", today).maybeSingle();
-    if (!day) continue;
-
-    const { data: pp } = await sb
-      .from("prayer_points")
-      .select("title, body_markdown, image_url, scriptures(reference, text, position)")
-      .eq("program_day_id", day.id).maybeSingle();
-
-    const scriptures = ((pp?.scriptures ?? []) as { reference: string; text: string | null; position: number }[])
-      .sort((a, b) => a.position - b.position);
-
-    const { data: tasks } = await sb.from("tasks")
-      .select("id, type, title, duration_minutes, target_start_time, max_points, metadata, position")
-      .eq("program_day_id", day.id).order("position");
-
-    const { data: completions } = await sb.from("task_completions")
-      .select("task_id, first_started_at, started_at, elapsed_seconds, completed_at, points_awarded")
-      .eq("user_id", userId)
-      .in("task_id", (tasks ?? []).map((t) => t.id).concat("00000000-0000-0000-0000-000000000000"));
-
-    const compByTask = new Map(completions?.map((c) => [c.task_id, c]));
-
-    const uiTasks: UITask[] = (tasks ?? []).map((t) => ({
-      id: t.id,
-      type: t.type,
-      title: t.title,
-      duration_minutes: t.duration_minutes,
-      target_start_time: t.target_start_time,
-      max_points: t.max_points,
-      chapters: (t.metadata?.chapters as string[] | undefined) ?? [],
-      completion: compByTask.get(t.id) ?? null,
-    }));
-
-    return {
-      program: { id: p.id, name: p.name, timezone: p.timezone },
-      day,
-      prayerPoint: pp ? {
-        title: pp.title, body_markdown: pp.body_markdown, image_url: pp.image_url,
-        scriptures: scriptures.map((s) => ({ reference: s.reference, text: s.text })),
-      } : null,
-      tasks: uiTasks,
-    };
-  }
-  return null;
-}
 
 export default async function TodayPage() {
   const user = await getSessionUser();
@@ -92,7 +20,7 @@ export default async function TodayPage() {
     );
   }
 
-  const { program, day, prayerPoint, tasks } = data;
+  const { program, day, prayerPoint } = data;
 
   return (
     <div className="pt-6 pb-28">
@@ -135,25 +63,17 @@ export default async function TodayPage() {
         </section>
       )}
 
-      {tasks.length > 0 && (
-        <>
-          <div className="rule my-8" />
-          <TasksSection tasks={tasks} />
-        </>
-      )}
+      <div className="rule my-8" />
+      <div className="text-center">
+        <Link href="/tasks" className="btn-gold text-sm">Go to today&apos;s tasks</Link>
+      </div>
 
       <div className="rule my-8" />
       <p className="text-center text-[11px] tracking-[0.3em] text-fg-muted">
         {program.name.toUpperCase()}
       </p>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--bg-2)]/90 backdrop-blur border-t border-[color:var(--border)]">
-        <div className="max-w-md mx-auto flex items-center justify-around py-3 text-xs uppercase tracking-[0.2em]">
-          <Link href="/today" className="text-gold">Today</Link>
-          <Link href="/history" className="text-fg-muted hover:text-gold">History</Link>
-          <Link href={`/leaderboard/${program.id}`} className="text-fg-muted hover:text-gold">Board</Link>
-        </div>
-      </div>
+      <BottomNav active="today" programId={program.id} />
     </div>
   );
 }

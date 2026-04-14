@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/session";
+import BottomNav from "@/components/BottomNav";
 
 export const dynamic = "force-dynamic";
 
@@ -95,13 +95,7 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pr
         <p className="text-center text-fg-muted">No scores yet.</p>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--bg-2)]/90 backdrop-blur border-t border-[color:var(--border)]">
-        <div className="max-w-md mx-auto flex items-center justify-around py-3 text-xs uppercase tracking-[0.2em]">
-          <Link href="/today" className="text-fg-muted hover:text-gold">Today</Link>
-          <Link href="/history" className="text-fg-muted hover:text-gold">History</Link>
-          <span className="text-gold">Board</span>
-        </div>
-      </div>
+      <BottomNav active="board" programId={programId} />
     </div>
   );
 }

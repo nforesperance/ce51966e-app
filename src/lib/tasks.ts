@@ -7,7 +7,7 @@ import { todayInTz } from "@/lib/time";
 export async function loadActionableTaskForUser(taskId: string, userId: string) {
   const sb = supabaseAdmin();
   const { data: task } = await sb.from("tasks")
-    .select("id, type, title, duration_minutes, target_start_time, full_marks_window_minutes, zero_marks_window_minutes, max_points, metadata, program_day_id")
+    .select("id, type, title, duration_minutes, target_start_time, full_marks_window_minutes, zero_marks_window_minutes, full_marks_end_window_minutes, zero_marks_end_window_minutes, max_points, metadata, program_day_id")
     .eq("id", taskId).maybeSingle();
   if (!task) return null;
 

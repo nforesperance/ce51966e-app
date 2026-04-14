@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/time";
 import { Clock, BookOpen, ListChecks, Check } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
 
 export const dynamic = "force-dynamic";
 
@@ -121,12 +122,8 @@ export default async function HistoryDay({ params }: { params: Promise<{ dayId: 
         </>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--bg-2)]/90 backdrop-blur border-t border-[color:var(--border)]">
-        <div className="max-w-md mx-auto flex items-center justify-around py-3 text-xs uppercase tracking-[0.2em]">
-          <Link href="/today" className="text-fg-muted hover:text-gold">Today</Link>
-          <Link href="/history" className="text-gold">History</Link>
-        </div>
-      </div>
+      <BottomNav active="today" />
+
     </div>
   );
 }

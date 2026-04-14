@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import BottomNav from "@/components/BottomNav";
 import { getSessionUser } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/time";
 
@@ -60,12 +61,8 @@ export default async function HistoryPage() {
         </section>
       ))}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-[color:var(--bg-2)]/90 backdrop-blur border-t border-[color:var(--border)]">
-        <div className="max-w-md mx-auto flex items-center justify-around py-3 text-xs uppercase tracking-[0.2em]">
-          <Link href="/today" className="text-fg-muted hover:text-gold">Today</Link>
-          <span className="text-gold">History</span>
-        </div>
-      </div>
+      <BottomNav active="today" />
+
     </div>
   );
 }

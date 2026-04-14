@@ -9,6 +9,8 @@ const Patch = z.object({
   target_start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable().optional(),
   full_marks_window_minutes: z.number().int().min(0).max(1440).nullable().optional(),
   zero_marks_window_minutes: z.number().int().min(1).max(1440).nullable().optional(),
+  full_marks_end_window_minutes: z.number().int().min(0).max(1440).nullable().optional(),
+  zero_marks_end_window_minutes: z.number().int().min(1).max(1440).nullable().optional(),
   max_points: z.number().int().min(1).max(10000).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   position: z.number().int().min(0).max(100).optional(),

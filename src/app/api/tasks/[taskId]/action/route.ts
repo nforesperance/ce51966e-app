@@ -75,7 +75,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
       const finalElapsed = accumWithLive;
       const points = scorePrayer({
         task, programDate: day.date, programTimezone: program.timezone,
-        firstStartedAt: new Date(firstStart), elapsedSeconds: finalElapsed,
+        firstStartedAt: new Date(firstStart),
+        completedAt: now,
+        elapsedSeconds: finalElapsed,
       });
       next = {
         started_at: null,
