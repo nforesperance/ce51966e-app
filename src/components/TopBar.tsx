@@ -13,7 +13,7 @@ export default function TopBar({ name, level }: { name: string; level: string | 
   }
   return (
     <header className="w-full">
-      <div className="max-w-md mx-auto px-5 pt-5 pb-3 flex items-center justify-between">
+      <div className="max-w-md mx-auto px-5 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-gold/20 border border-gold grid place-items-center">
             <span className="text-gold text-xs font-bold">

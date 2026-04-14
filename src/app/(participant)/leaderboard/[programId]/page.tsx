@@ -63,7 +63,7 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pr
   }
 
   return (
-    <div className="pt-6 pb-20">
+    <div className="pt-3 pb-16">
       <div className="text-center mb-6">
         <div className="label">{program.name}</div>
         <h1 className="text-2xl font-semibold mt-2">Leaderboard</h1>

@@ -48,17 +48,17 @@ export default async function HistoryDay({ params }: { params: Promise<{ dayId: 
   const compByTask = new Map((completions ?? []).map((c) => [c.task_id, c]));
 
   return (
-    <div className="pt-6 pb-20">
-      <div className="mb-3">
-        <Link href="/history" className="text-sm text-fg-muted hover:text-gold">← History</Link>
+    <div className="pt-3 pb-16">
+      <div className="mb-2">
+        <Link href="/history" className="text-xs text-fg-muted hover:text-gold">← History</Link>
       </div>
-      <div className="text-center mb-6">
-        <div className="label">{program.name}</div>
-        <div className="mt-4 text-xs tracking-[0.3em] text-fg-muted">DAY</div>
-        <div className="text-6xl font-semibold text-gold-soft leading-none">{day.day_number}</div>
-        <p className="text-fg-muted text-xs mt-2">{day.date}</p>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <span className="label">{program.name}</span>
+          <p className="text-[11px] text-fg-muted mt-1">{day.date}</p>
+        </div>
+        <span className="pill">Day {day.day_number}</span>
       </div>
-      <div className="rule mb-6" />
 
       {pp?.image_url && (
         <div className="mb-6 rounded-2xl overflow-hidden border border-[color:var(--border)]">

@@ -23,13 +23,11 @@ export default async function TodayPage() {
   const { program, day, prayerPoint } = data;
 
   return (
-    <div className="pt-6 pb-20">
-      <div className="text-center mb-6">
-        <div className="label">{program.name}</div>
-        <div className="mt-4 text-xs tracking-[0.3em] text-fg-muted">DAY</div>
-        <div className="text-6xl font-semibold text-gold-soft leading-none">{day.day_number}</div>
+    <div className="pt-3 pb-16">
+      <div className="flex items-center justify-between mb-3">
+        <span className="label">{program.name}</span>
+        <span className="pill">Day {day.day_number}</span>
       </div>
-      <div className="rule mb-6" />
 
       {prayerPoint?.image_url && (
         <div className="mb-6 rounded-2xl overflow-hidden border border-[color:var(--border)]">
@@ -63,15 +61,9 @@ export default async function TodayPage() {
         </section>
       )}
 
-      <div className="rule my-8" />
-      <div className="text-center">
+      <div className="text-center mt-6">
         <Link href="/tasks" className="btn-gold text-sm">Go to today&apos;s tasks</Link>
       </div>
-
-      <div className="rule my-8" />
-      <p className="text-center text-[11px] tracking-[0.3em] text-fg-muted">
-        {program.name.toUpperCase()}
-      </p>
 
       <BottomNav active="today" programId={program.id} />
     </div>
