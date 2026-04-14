@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Elmoan — Prayer & Bible Study
 
-## Getting Started
+Mobile-first web app for daily prayer points, Bible study tasks, and progress tracking.
 
-First, run the development server:
+- **Frontend/server:** Next.js 16 (App Router, TypeScript)
+- **Backend:** Supabase (Postgres + Storage)
+- **Auth:** custom — short (4-char) login keys, opaque server session cookies
+- **Deploy target:** Vercel (free tier)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 1. Supabase setup
+
+1. Create a project at https://supabase.com.
+2. In the SQL editor, paste and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
+3. **Settings → API** — copy three values:
+   - `Project URL`
+   - `anon` public key
+   - `service_role` secret key (keep private — server-only)
+
+### Storage bucket (for prayer point images)
+
+In **Storage**, create a public bucket named `prayer-images`. We'll wire uploads to it in a later milestone.
+
+---
+
+## 2. Environment variables
+
+Copy `.env.example` → `.env.local` and fill:
+
+```env
+SUPABASE_URL="https://xxxx.supabase.co"
+SUPABASE_KEY="eyJ...anon..."             # safe to expose to browser
+SUPABASE_SERVICE_ROLE_KEY="eyJ...srk..." # SERVER ONLY
+SESSION_SECRET="$(openssl rand -base64 48)"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Generate `SESSION_SECRET` with: `openssl rand -base64 48`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### On Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Add the same four variables in **Project Settings → Environment Variables**, scoped to Production + Preview. `SUPABASE_SERVICE_ROLE_KEY` and `SESSION_SECRET` must stay server-only (do **not** prefix with `NEXT_PUBLIC_`).
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 3. First run
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run bootstrap:admin -- "Your Name"    # creates the first admin, prints the login key
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open http://localhost:3000 → enter the 4-char login key from the bootstrap output.
 
-## Deploy on Vercel
+The admin login key is the only bootstrap credential. Save it somewhere safe; resetting requires re-running `bootstrap:admin`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 4. Deploy
+
+```bash
+npx vercel                 # first time: link the project
+npx vercel --prod          # ship
+```
+
+Vercel auto-detects Next.js. Env vars must be set before first deploy.
+
+---
+
+## 5. What's built so far
+
+- [x] Navy/gold theme matching the app design
+- [x] Login-key authentication with server-side sessions
+- [x] Admin shell (overview, users, programs pages)
+- [x] Participant "Today" page rendering prayer point + scriptures
+- [x] Full database schema with RLS enabled (app goes through service role)
+
+## 6. Coming next
+
+- Admin: CSV user upload, key generation, level assignment
+- Admin: program creation, participant assignment, day generation
+- Admin: prayer point Markdown editor + image upload
+- Admin: task builder (prayer / reading / other)
+- Participant: prayer timer (start/finish) + reading checklists
+- Scoring engine + leaderboard
+- Admin drilldown per participant + manual overrides
+- PWA manifest + offline shell
+
+---
+
+## Project layout
+
+```
+src/
+  app/
+    (participant)/         # group: participant-only layout + pages
+      today/
+    admin/                 # admin-only layout + pages
+    api/auth/              # login / logout endpoints
+    login/
+  components/              # shared UI
+  lib/
+    auth/                  # session, login-key, hashing
+    supabase/admin.ts      # service-role client (server-only)
+supabase/migrations/       # SQL schema
+scripts/bootstrap-admin.ts # first-admin seeding
+```

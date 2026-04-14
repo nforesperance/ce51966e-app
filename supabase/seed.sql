@@ -1,0 +1,7 @@
+-- Creates the initial admin user. Run this ONCE after the migration.
+-- Replace the bcrypt hash: generate by running `npm run gen-key -- ADMN` locally
+-- (see scripts/gen-key.ts). The hash below is a placeholder for 'ADMN'.
+--
+-- Example (login key: ADMN):
+--   insert into public.users (full_name, role, login_key_hash, login_key_hint, level)
+--   values ('Site Admin', 'admin', '$2a$10$REPLACE_ME', 'A***', 'admin');
