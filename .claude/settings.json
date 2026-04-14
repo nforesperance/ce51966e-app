@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(npm --version)",
+      "Bash(npx --yes create-next-app@latest . --typescript --tailwind --app --src-dir --no-import-alias --eslint --use-npm --no-turbopack --yes)"
+    ],
+    "additionalDirectories": [
+      "/home/nfor/workspace/prayer/app/.venv",
+      "/tmp"
+    ]
+  }
+}
