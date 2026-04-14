@@ -135,7 +135,27 @@ input[type="datetime-local"].input {
 }
 
 /* Prose overrides inside prayer-point body */
+.prose-prayer {
+  overflow-wrap: anywhere;     /* break long words / URLs that would overflow */
+  word-break: break-word;
+}
 .prose-prayer h1, .prose-prayer h2, .prose-prayer h3 { color: var(--gold-soft); }
+.prose-prayer h2 { font-size: 1.1rem; font-weight: 600; margin: 0.75rem 0 0.25rem; }
+.prose-prayer h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.prose-prayer p { margin: 0.5rem 0; }
+.prose-prayer p:first-child { margin-top: 0; }
+.prose-prayer p:last-child { margin-bottom: 0; }
+.prose-prayer ul, .prose-prayer ol { margin: 0.5rem 0 0.5rem 1.2rem; }
+.prose-prayer ul { list-style: disc; }
+.prose-prayer ol { list-style: decimal; }
+.prose-prayer li { margin: 0.15rem 0; }
+.prose-prayer blockquote {
+  margin: 0.75rem 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--gold);
+  color: var(--fg-muted);
+  font-style: italic;
+}
 .prose-prayer strong { color: var(--gold-soft); }
 .prose-prayer em { color: var(--gold-soft); font-style: italic; }
-.prose-prayer a { color: var(--gold); text-decoration: underline; }
+.prose-prayer a { color: var(--gold); text-decoration: underline; word-break: break-all; }

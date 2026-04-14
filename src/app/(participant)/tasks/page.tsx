@@ -23,7 +23,7 @@ export default async function TasksPage() {
 
   const { program, day, tasks } = data;
   return (
-    <div className="pt-6 pb-28">
+    <div className="pt-6 pb-20">
       <div className="text-center mb-6">
         <div className="label">{program.name}</div>
         <div className="mt-3 flex items-baseline justify-center gap-3">

@@ -48,7 +48,7 @@ export default async function HistoryDay({ params }: { params: Promise<{ dayId: 
   const compByTask = new Map((completions ?? []).map((c) => [c.task_id, c]));
 
   return (
-    <div className="pt-6 pb-28">
+    <div className="pt-6 pb-20">
       <div className="mb-3">
         <Link href="/history" className="text-sm text-fg-muted hover:text-gold">← History</Link>
       </div>

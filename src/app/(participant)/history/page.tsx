@@ -35,7 +35,7 @@ export default async function HistoryPage() {
   }));
 
   return (
-    <div className="pt-6 pb-28">
+    <div className="pt-6 pb-20">
       <h1 className="text-2xl font-semibold mb-1">History</h1>
       <p className="text-fg-muted text-sm mb-6">Past days — read-only.</p>
 
