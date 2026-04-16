@@ -57,12 +57,18 @@ export async function loadToday(userId: string): Promise<TodayData> {
     let lockedUntilIso: string | null = null;
 
     if (allTodayDone || p.next_day_preview_hours > 0) {
-      const { data: nd } = await sb.from("program_days")
+      // Look at the upcoming days in order and pick the first one that actually
+      // has a prayer point or at least one task. This also skips over any
+      // admin-incomplete days so the participant sees content as soon as it's
+      // published somewhere ahead.
+      const { data: upcoming } = await sb.from("program_days")
         .select("id, day_number, date")
         .eq("program_id", p.id)
-        .eq("day_number", currentDay.day_number + 1)
-        .maybeSingle();
-      if (nd) {
+        .gt("date", currentDay.date)
+        .order("day_number", { ascending: true })
+        .limit(10);
+
+      for (const nd of upcoming ?? []) {
         const rawStart = zonedToUtc(nd.date, "00:00", p.timezone);
         const effectiveStart = new Date(rawStart.getTime() - (p.day_unlock_offset_minutes ?? 0) * 60_000);
         const hoursUntilNext = (effectiveStart.getTime() - Date.now()) / 3_600_000;
@@ -70,31 +76,42 @@ export async function loadToday(userId: string): Promise<TodayData> {
           && hoursUntilNext > 0
           && hoursUntilNext <= p.next_day_preview_hours;
 
-        // Only swap if there's content to show for the next day. If the admin
-        // hasn't published tomorrow's prayer point or any task yet, keep
-        // showing today so the user doesn't land on a blank screen.
-        if (allTodayDone || withinWindow) {
-          const [{ count: ndPpCount }, { count: ndTaskCount }] = await Promise.all([
-            sb.from("prayer_points").select("*", { count: "exact", head: true }).eq("program_day_id", nd.id),
-            sb.from("tasks").select("*", { count: "exact", head: true }).eq("program_day_id", nd.id),
-          ]);
-          const hasContent = (ndPpCount ?? 0) > 0 || (ndTaskCount ?? 0) > 0;
-          if (hasContent) {
-            useNext = true;
-            nextDay = nd;
-            lockedUntilIso = effectiveStart.toISOString();
-          }
+        // If we're not eligible for this day (and it's in the future), later days
+        // can only be farther out, so stop.
+        if (!(allTodayDone || withinWindow)) break;
+
+        // Does this day have something to show? Use simple fetches (count+head was
+        // producing inconsistent counts on some Supabase projects).
+        const [{ data: ppRow }, { data: taskRow }] = await Promise.all([
+          sb.from("prayer_points").select("id").eq("program_day_id", nd.id).maybeSingle(),
+          sb.from("tasks").select("id").eq("program_day_id", nd.id).limit(1).maybeSingle(),
+        ]);
+        if (ppRow || taskRow) {
+          useNext = true;
+          nextDay = nd;
+          lockedUntilIso = effectiveStart.toISOString();
+          break;
         }
+        // Otherwise, try the next upcoming day.
       }
     }
 
     const effectiveDay = useNext && nextDay ? nextDay : currentDay;
 
-    // Load prayer point + tasks for the effective day.
-    const { data: pp } = await sb
+    // Load prayer point for the effective day. If it's missing (preview of a day
+    // the admin hasn't written yet), fall back to today's prayer point so the
+    // page isn't blank.
+    let { data: pp } = await sb
       .from("prayer_points")
       .select("title, body_markdown, image_url, scriptures(reference, text, position)")
       .eq("program_day_id", effectiveDay.id).maybeSingle();
+    if (!pp && useNext) {
+      const r = await sb
+        .from("prayer_points")
+        .select("title, body_markdown, image_url, scriptures(reference, text, position)")
+        .eq("program_day_id", currentDay.id).maybeSingle();
+      pp = r.data;
+    }
     const scriptures = ((pp?.scriptures ?? []) as { reference: string; text: string | null; position: number }[])
       .sort((a, b) => a.position - b.position);
 
