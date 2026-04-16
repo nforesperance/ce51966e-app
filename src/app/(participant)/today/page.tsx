@@ -21,7 +21,7 @@ export default async function TodayPage() {
     );
   }
 
-  const { program, day, prayerPoint, locked, lockedUntilIso } = data;
+  const { program, day, prayerPoint, locked, lockedUntilIso, allTodayDone } = data;
 
   return (
     <div className="pt-3 pb-16">
@@ -32,6 +32,11 @@ export default async function TodayPage() {
 
       {locked && lockedUntilIso && (
         <LockedBanner unlockIso={lockedUntilIso} timezone={program.timezone} />
+      )}
+      {!locked && allTodayDone && (
+        <div className="card px-3 py-2 mb-3 text-[12px] text-[color:var(--ok)] border-[color:var(--ok)]/40">
+          ✓ Today complete. Next day&apos;s content will appear when the admin publishes it.
+        </div>
       )}
 
       {prayerPoint?.image_url && (

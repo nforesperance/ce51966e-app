@@ -13,6 +13,7 @@ export type TodayData = {
   tasks: UITask[];
   locked: boolean;
   lockedUntilIso: string | null;
+  allTodayDone: boolean;       // today's tasks all completed (useful when we stayed on today)
 } | null;
 
 export async function loadToday(userId: string): Promise<TodayData> {
@@ -62,17 +63,27 @@ export async function loadToday(userId: string): Promise<TodayData> {
         .eq("day_number", currentDay.day_number + 1)
         .maybeSingle();
       if (nd) {
-        // Day actually "activates" offset minutes before its local midnight.
         const rawStart = zonedToUtc(nd.date, "00:00", p.timezone);
         const effectiveStart = new Date(rawStart.getTime() - (p.day_unlock_offset_minutes ?? 0) * 60_000);
         const hoursUntilNext = (effectiveStart.getTime() - Date.now()) / 3_600_000;
         const withinWindow = p.next_day_preview_hours > 0
           && hoursUntilNext > 0
           && hoursUntilNext <= p.next_day_preview_hours;
+
+        // Only swap if there's content to show for the next day. If the admin
+        // hasn't published tomorrow's prayer point or any task yet, keep
+        // showing today so the user doesn't land on a blank screen.
         if (allTodayDone || withinWindow) {
-          useNext = true;
-          nextDay = nd;
-          lockedUntilIso = effectiveStart.toISOString();
+          const [{ count: ndPpCount }, { count: ndTaskCount }] = await Promise.all([
+            sb.from("prayer_points").select("*", { count: "exact", head: true }).eq("program_day_id", nd.id),
+            sb.from("tasks").select("*", { count: "exact", head: true }).eq("program_day_id", nd.id),
+          ]);
+          const hasContent = (ndPpCount ?? 0) > 0 || (ndTaskCount ?? 0) > 0;
+          if (hasContent) {
+            useNext = true;
+            nextDay = nd;
+            lockedUntilIso = effectiveStart.toISOString();
+          }
         }
       }
     }
@@ -137,6 +148,7 @@ export async function loadToday(userId: string): Promise<TodayData> {
       tasks: uiTasks,
       locked: useNext,
       lockedUntilIso,
+      allTodayDone: allTodayDone && !useNext,
     };
   }
   return null;

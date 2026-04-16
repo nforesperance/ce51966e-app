@@ -22,7 +22,7 @@ export default async function TasksPage() {
     );
   }
 
-  const { program, day, tasks, locked, lockedUntilIso } = data;
+  const { program, day, tasks, locked, lockedUntilIso, allTodayDone } = data;
   return (
     <div className="pt-3 pb-16">
       <div className="flex items-center justify-between mb-3">
@@ -32,6 +32,11 @@ export default async function TasksPage() {
 
       {locked && lockedUntilIso && (
         <LockedBanner unlockIso={lockedUntilIso} timezone={program.timezone} />
+      )}
+      {!locked && allTodayDone && (
+        <div className="card px-3 py-2 mb-3 text-[12px] text-[color:var(--ok)] border-[color:var(--ok)]/40">
+          ✓ All done for today. Waiting for the next day to be published.
+        </div>
       )}
 
       {tasks.length === 0 ? (
