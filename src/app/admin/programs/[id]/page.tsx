@@ -10,7 +10,7 @@ export default async function ProgramDetail({ params }: { params: Promise<{ id: 
 
   const { data: program } = await sb
     .from("programs")
-    .select("id, name, start_date, end_date, timezone, next_day_preview_hours")
+    .select("id, name, start_date, end_date, timezone, next_day_preview_hours, day_unlock_offset_minutes")
     .eq("id", id).maybeSingle();
   if (!program) notFound();
 

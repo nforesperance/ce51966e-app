@@ -35,3 +35,12 @@ export function zonedToUtc(date: string, time: string, tz: string): Date {
 export function minutesBetween(a: Date, b: Date) {
   return (b.getTime() - a.getTime()) / 60000;
 }
+
+// Which program-day is "currently active"? If day_unlock_offset is 5 minutes
+// and we're at 23:55 program-tz, this returns tomorrow's date — so a midnight
+// prayer task becomes actionable at 23:55.
+export function effectiveProgramDate(tz: string, offsetMinutes: number, now: Date = new Date()): string {
+  if (!offsetMinutes) return todayInTz(tz, now);
+  const shifted = new Date(now.getTime() + offsetMinutes * 60_000);
+  return todayInTz(tz, shifted);
+}

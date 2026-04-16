@@ -7,6 +7,7 @@ const Patch = z.object({
   name: z.string().min(1).max(120).optional(),
   timezone: z.string().min(1).max(64).optional(),
   next_day_preview_hours: z.number().int().min(0).max(24).optional(),
+  day_unlock_offset_minutes: z.number().int().min(0).max(60).optional(),
 });
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

@@ -1,25 +1,25 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { todayInTz, zonedToUtc } from "@/lib/time";
+import { zonedToUtc, effectiveProgramDate } from "@/lib/time";
 import type { UITask } from "@/app/(participant)/tasks/TasksSection";
 
 export type TodayData = {
-  program: { id: string; name: string; timezone: string; next_day_preview_hours: number };
+  program: { id: string; name: string; timezone: string; next_day_preview_hours: number; day_unlock_offset_minutes: number };
   day: { id: string; day_number: number; date: string };
   prayerPoint: {
     title: string | null; body_markdown: string | null; image_url: string | null;
     scriptures: { reference: string; text: string | null }[];
   } | null;
   tasks: UITask[];
-  locked: boolean;              // tasks inactive (preview of a future day)
-  lockedUntilIso: string | null;// when the locked day actually starts (ISO UTC)
+  locked: boolean;
+  lockedUntilIso: string | null;
 } | null;
 
 export async function loadToday(userId: string): Promise<TodayData> {
   const sb = supabaseAdmin();
   const { data: memberships } = await sb
     .from("program_participants")
-    .select("program_id, programs(id, name, timezone, start_date, end_date, next_day_preview_hours)")
+    .select("program_id, programs(id, name, timezone, start_date, end_date, next_day_preview_hours, day_unlock_offset_minutes)")
     .eq("user_id", userId);
   if (!memberships?.length) return null;
 
@@ -27,11 +27,12 @@ export async function loadToday(userId: string): Promise<TodayData> {
     const raw = (m as { programs: unknown }).programs;
     const p = Array.isArray(raw) ? raw[0] : raw as {
       id: string; name: string; timezone: string;
-      start_date: string; end_date: string; next_day_preview_hours: number;
+      start_date: string; end_date: string;
+      next_day_preview_hours: number; day_unlock_offset_minutes: number;
     };
     if (!p) continue;
 
-    const today = todayInTz(p.timezone);
+    const today = effectiveProgramDate(p.timezone, p.day_unlock_offset_minutes ?? 0);
     if (today < p.start_date || today > p.end_date) continue;
 
     const { data: currentDay } = await sb.from("program_days")
@@ -61,15 +62,17 @@ export async function loadToday(userId: string): Promise<TodayData> {
         .eq("day_number", currentDay.day_number + 1)
         .maybeSingle();
       if (nd) {
-        const nextStart = zonedToUtc(nd.date, "00:00", p.timezone);
-        const hoursUntilNext = (nextStart.getTime() - Date.now()) / 3_600_000;
+        // Day actually "activates" offset minutes before its local midnight.
+        const rawStart = zonedToUtc(nd.date, "00:00", p.timezone);
+        const effectiveStart = new Date(rawStart.getTime() - (p.day_unlock_offset_minutes ?? 0) * 60_000);
+        const hoursUntilNext = (effectiveStart.getTime() - Date.now()) / 3_600_000;
         const withinWindow = p.next_day_preview_hours > 0
           && hoursUntilNext > 0
           && hoursUntilNext <= p.next_day_preview_hours;
         if (allTodayDone || withinWindow) {
           useNext = true;
           nextDay = nd;
-          lockedUntilIso = nextStart.toISOString();
+          lockedUntilIso = effectiveStart.toISOString();
         }
       }
     }
@@ -121,7 +124,11 @@ export async function loadToday(userId: string): Promise<TodayData> {
     });
 
     return {
-      program: { id: p.id, name: p.name, timezone: p.timezone, next_day_preview_hours: p.next_day_preview_hours },
+      program: {
+        id: p.id, name: p.name, timezone: p.timezone,
+        next_day_preview_hours: p.next_day_preview_hours,
+        day_unlock_offset_minutes: p.day_unlock_offset_minutes ?? 0,
+      },
       day: { id: effectiveDay.id, day_number: effectiveDay.day_number, date: effectiveDay.date },
       prayerPoint: pp ? {
         title: pp.title, body_markdown: pp.body_markdown, image_url: pp.image_url,

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, UserPlus, X, Search, Calendar, ChevronRight } from "lucide-react";
 
-type Program = { id: string; name: string; start_date: string; end_date: string; timezone: string; next_day_preview_hours: number };
+type Program = {
+  id: string; name: string; start_date: string; end_date: string;
+  timezone: string; next_day_preview_hours: number; day_unlock_offset_minutes: number;
+};
 type Day = { id: string; day_number: number; date: string };
 type Participant = { id: string; full_name: string; level: string | null; whatsapp: string | null; active: boolean };
 type Candidate = { id: string; full_name: string; level: string | null };
@@ -34,6 +37,16 @@ export default function ProgramDetailClient({
       if (!res.ok) { alert(j.error ?? "Failed"); return; }
       setProgram({ ...program, next_day_preview_hours: h });
     } finally { setSavingPreview(false); }
+  }
+
+  async function saveUnlockOffset(m: number) {
+    const res = await fetch(`/api/admin/programs/${program.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ day_unlock_offset_minutes: m }),
+    });
+    const j = await res.json();
+    if (!res.ok) { alert(j.error ?? "Failed"); return; }
+    setProgram({ ...program, day_unlock_offset_minutes: m });
   }
 
   async function removeParticipant(userId: string, name: string) {
@@ -82,20 +95,37 @@ export default function ProgramDetailClient({
         </button>
       </div>
 
-      <section className="card p-4 mb-6 flex flex-wrap items-center gap-3">
-        <label className="label">Next-day preview</label>
-        <input
-          type="number" min={0} max={24}
-          className="input w-24 text-center"
-          defaultValue={program.next_day_preview_hours}
-          onBlur={(e) => {
-            const v = Math.max(0, Math.min(24, parseInt(e.target.value, 10) || 0));
-            if (v !== program.next_day_preview_hours) savePreviewHours(v);
-          }}
-        />
-        <span className="text-xs text-fg-muted">
-          hours before next day — participants can peek at tomorrow&apos;s prayer point (tasks stay locked). {savingPreview && "Saving…"}
-        </span>
+      <section className="card p-4 mb-6 space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="label w-40">Next-day preview</label>
+          <input
+            type="number" min={0} max={24}
+            className="input w-24 text-center"
+            defaultValue={program.next_day_preview_hours}
+            onBlur={(e) => {
+              const v = Math.max(0, Math.min(24, parseInt(e.target.value, 10) || 0));
+              if (v !== program.next_day_preview_hours) savePreviewHours(v);
+            }}
+          />
+          <span className="text-xs text-fg-muted flex-1">
+            hours before unlock — participants see tomorrow&apos;s prayer point (tasks stay locked). {savingPreview && "Saving…"}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="label w-40">Day unlocks</label>
+          <input
+            type="number" min={0} max={60}
+            className="input w-24 text-center"
+            defaultValue={program.day_unlock_offset_minutes}
+            onBlur={(e) => {
+              const v = Math.max(0, Math.min(60, parseInt(e.target.value, 10) || 0));
+              if (v !== program.day_unlock_offset_minutes) saveUnlockOffset(v);
+            }}
+          />
+          <span className="text-xs text-fg-muted flex-1">
+            minutes before local midnight — matches the prayer start-window tolerance so participants can tap <em>Start</em> just before 00:00 and still score full marks.
+          </span>
+        </div>
       </section>
 
       <section className="mb-8">

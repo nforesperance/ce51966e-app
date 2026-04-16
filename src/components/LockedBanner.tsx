@@ -20,7 +20,11 @@ export default function LockedBanner({ unlockIso, timezone }: { unlockIso: strin
     const iv = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(iv);
   }, []);
-  const unlockLocal = new Date(unlockIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  // Format the unlock moment in the PROGRAM's timezone, not the user's.
+  // e.g. a Montreal user still sees "00:00 Douala" for a GMT+1 midnight.
+  const unlockLocal = new Date(unlockIso).toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", timeZone: timezone,
+  });
   const left = unlockTs - now;
   return (
     <div className="card px-3 py-2 flex items-center gap-2 mb-3 border-[color:var(--gold)]/50">

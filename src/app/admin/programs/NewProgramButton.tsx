@@ -13,7 +13,7 @@ export default function NewProgramButton() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0 });
+  const [f, setF] = useState({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0, day_unlock_offset_minutes: 0 });
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +25,7 @@ export default function NewProgramButton() {
       const j = await res.json();
       if (!res.ok) { alert(j.error ?? "Failed"); return; }
       setOpen(false);
-      setF({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0 });
+      setF({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0, day_unlock_offset_minutes: 0 });
       router.refresh();
       router.push(`/admin/programs/${j.program.id}`);
     } finally { setBusy(false); }
@@ -78,7 +78,16 @@ export default function NewProgramButton() {
                   value={f.next_day_preview_hours}
                   onChange={(e) => setF({ ...f, next_day_preview_hours: parseInt(e.target.value, 10) || 0 })} />
                 <p className="text-xs text-fg-muted mt-1">
-                  Participants can peek at tomorrow&apos;s prayer point this many hours before it starts (0 = disabled). They also unlock it automatically after completing today&apos;s tasks.
+                  Participants can peek at tomorrow&apos;s prayer point this many hours before unlock (0 = disabled). They also preview automatically after finishing today&apos;s tasks.
+                </p>
+              </div>
+              <div>
+                <label className="label block mb-1">Day unlocks (minutes before midnight)</label>
+                <input type="number" min={0} max={60} className="input w-32"
+                  value={f.day_unlock_offset_minutes}
+                  onChange={(e) => setF({ ...f, day_unlock_offset_minutes: parseInt(e.target.value, 10) || 0 })} />
+                <p className="text-xs text-fg-muted mt-1">
+                  Set to match the prayer start-window (e.g. 5) so participants can start midnight prayer at 23:55 and score full marks.
                 </p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
