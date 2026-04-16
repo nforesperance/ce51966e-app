@@ -9,6 +9,7 @@ const Body = z.object({
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   timezone: z.string().min(1).max(64).default("UTC"),
+  next_day_preview_hours: z.number().int().min(0).max(24).default(0),
 });
 
 export async function POST(req: NextRequest) {
@@ -31,9 +32,10 @@ export async function POST(req: NextRequest) {
       start_date: parsed.data.start_date,
       end_date: parsed.data.end_date,
       timezone: parsed.data.timezone,
+      next_day_preview_hours: parsed.data.next_day_preview_hours,
       created_by: guard.user.id,
     })
-    .select("id, name, start_date, end_date, timezone, created_at")
+    .select("id, name, start_date, end_date, timezone, next_day_preview_hours, created_at")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

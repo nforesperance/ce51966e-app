@@ -5,21 +5,36 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, UserPlus, X, Search, Calendar, ChevronRight } from "lucide-react";
 
-type Program = { id: string; name: string; start_date: string; end_date: string; timezone: string };
+type Program = { id: string; name: string; start_date: string; end_date: string; timezone: string; next_day_preview_hours: number };
 type Day = { id: string; day_number: number; date: string };
 type Participant = { id: string; full_name: string; level: string | null; whatsapp: string | null; active: boolean };
 type Candidate = { id: string; full_name: string; level: string | null };
 
 export default function ProgramDetailClient({
-  program, days, participants: initialParticipants, candidates: initialCandidates,
+  program: initialProgram, days, participants: initialParticipants, candidates: initialCandidates,
 }: {
   program: Program; days: Day[]; participants: Participant[]; candidates: Candidate[];
 }) {
   const router = useRouter();
+  const [program, setProgram] = useState(initialProgram);
   const [participants, setParticipants] = useState(initialParticipants);
   const [candidates, setCandidates] = useState(initialCandidates);
   const [addOpen, setAddOpen] = useState(false);
+  const [savingPreview, setSavingPreview] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
+
+  async function savePreviewHours(h: number) {
+    setSavingPreview(true);
+    try {
+      const res = await fetch(`/api/admin/programs/${program.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ next_day_preview_hours: h }),
+      });
+      const j = await res.json();
+      if (!res.ok) { alert(j.error ?? "Failed"); return; }
+      setProgram({ ...program, next_day_preview_hours: h });
+    } finally { setSavingPreview(false); }
+  }
 
   async function removeParticipant(userId: string, name: string) {
     if (!confirm(`Remove ${name} from this program?`)) return;
@@ -66,6 +81,22 @@ export default function ProgramDetailClient({
           Delete program
         </button>
       </div>
+
+      <section className="card p-4 mb-6 flex flex-wrap items-center gap-3">
+        <label className="label">Next-day preview</label>
+        <input
+          type="number" min={0} max={24}
+          className="input w-24 text-center"
+          defaultValue={program.next_day_preview_hours}
+          onBlur={(e) => {
+            const v = Math.max(0, Math.min(24, parseInt(e.target.value, 10) || 0));
+            if (v !== program.next_day_preview_hours) savePreviewHours(v);
+          }}
+        />
+        <span className="text-xs text-fg-muted">
+          hours before next day — participants can peek at tomorrow&apos;s prayer point (tasks stay locked). {savingPreview && "Saving…"}
+        </span>
+      </section>
 
       <section className="mb-8">
         <div className="flex items-center justify-between mb-3">

@@ -13,7 +13,7 @@ export default function NewProgramButton() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ name: "", start_date: "", end_date: "", timezone: "UTC" });
+  const [f, setF] = useState({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0 });
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +25,7 @@ export default function NewProgramButton() {
       const j = await res.json();
       if (!res.ok) { alert(j.error ?? "Failed"); return; }
       setOpen(false);
-      setF({ name: "", start_date: "", end_date: "", timezone: "UTC" });
+      setF({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0 });
       router.refresh();
       router.push(`/admin/programs/${j.program.id}`);
     } finally { setBusy(false); }
@@ -70,6 +70,15 @@ export default function NewProgramButton() {
                 </select>
                 <p className="text-xs text-fg-muted mt-1">
                   Used for daily cutoffs and prayer timing scoring.
+                </p>
+              </div>
+              <div>
+                <label className="label block mb-1">Next-day preview (hours)</label>
+                <input type="number" min={0} max={24} className="input w-32"
+                  value={f.next_day_preview_hours}
+                  onChange={(e) => setF({ ...f, next_day_preview_hours: parseInt(e.target.value, 10) || 0 })} />
+                <p className="text-xs text-fg-muted mt-1">
+                  Participants can peek at tomorrow&apos;s prayer point this many hours before it starts (0 = disabled). They also unlock it automatically after completing today&apos;s tasks.
                 </p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
