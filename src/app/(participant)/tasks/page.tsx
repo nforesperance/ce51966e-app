@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { loadToday } from "@/lib/loadToday";
 import TasksSection from "./TasksSection";
 import BottomNav from "@/components/BottomNav";
+import LockedBanner from "@/components/LockedBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function TasksPage() {
     );
   }
 
-  const { program, day, tasks } = data;
+  const { program, day, tasks, locked, lockedUntilIso } = data;
   return (
     <div className="pt-3 pb-16">
       <div className="flex items-center justify-between mb-3">
@@ -29,15 +30,19 @@ export default async function TasksPage() {
         <span className="pill">Day {day.day_number}</span>
       </div>
 
+      {locked && lockedUntilIso && (
+        <LockedBanner unlockIso={lockedUntilIso} timezone={program.timezone} />
+      )}
+
       {tasks.length === 0 ? (
-        <div className="card p-6 text-center text-fg-muted">No tasks for today.</div>
+        <div className="card p-6 text-center text-fg-muted">No tasks for this day.</div>
       ) : (
-        <TasksSection tasks={tasks} />
+        <TasksSection tasks={tasks} locked={locked} />
       )}
 
       <div className="mt-4 text-center">
         <Link href="/today" className="text-xs text-fg-muted hover:text-gold">
-          Read today&apos;s prayer point →
+          Read {locked ? "upcoming" : "today\u2019s"} prayer point →
         </Link>
       </div>
 

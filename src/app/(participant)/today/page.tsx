@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { loadToday } from "@/lib/loadToday";
 import BottomNav from "@/components/BottomNav";
+import LockedBanner from "@/components/LockedBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function TodayPage() {
     );
   }
 
-  const { program, day, prayerPoint, preview } = data;
+  const { program, day, prayerPoint, locked, lockedUntilIso } = data;
 
   return (
     <div className="pt-3 pb-16">
@@ -29,8 +30,12 @@ export default async function TodayPage() {
         <span className="pill">Day {day.day_number}</span>
       </div>
 
+      {locked && lockedUntilIso && (
+        <LockedBanner unlockIso={lockedUntilIso} timezone={program.timezone} />
+      )}
+
       {prayerPoint?.image_url && (
-        <div className="mb-6 rounded-2xl overflow-hidden border border-[color:var(--border)]">
+        <div className={`mb-6 rounded-2xl overflow-hidden border border-[color:var(--border)] ${locked ? "opacity-80" : ""}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={prayerPoint.image_url} alt="" className="w-full h-auto" />
         </div>
@@ -62,48 +67,10 @@ export default async function TodayPage() {
       )}
 
       <div className="text-center mt-6">
-        <Link href="/tasks" className="btn-gold text-sm">Go to today&apos;s tasks</Link>
+        <Link href="/tasks" className="btn-gold text-sm">
+          {locked ? "See upcoming tasks" : "Go to today's tasks"}
+        </Link>
       </div>
-
-      {preview && (
-        <section className="mt-10">
-          <div className="rule mb-4" />
-          <div className="flex items-center justify-between mb-3">
-            <span className="label">Tomorrow · preview</span>
-            <span className="pill">Day {preview.day_number}</span>
-          </div>
-          <p className="text-xs text-fg-muted mb-4">
-            Read-only preview. Tasks unlock at {new Date(preview.startsAtIso).toLocaleString([], { hour: "2-digit", minute: "2-digit" })} ({program.timezone}).
-          </p>
-          {preview.prayerPoint?.image_url && (
-            <div className="mb-4 rounded-2xl overflow-hidden border border-[color:var(--border)] opacity-80">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview.prayerPoint.image_url} alt="" className="w-full h-auto" />
-            </div>
-          )}
-          {preview.prayerPoint?.title && (
-            <h2 className="text-lg text-gold-soft font-semibold mb-2">{preview.prayerPoint.title}</h2>
-          )}
-          {preview.prayerPoint?.body_markdown && (
-            <div className="prose-prayer text-[14px] leading-relaxed text-fg/85"
-              dangerouslySetInnerHTML={{ __html: preview.prayerPoint.body_markdown }} />
-          )}
-          {preview.prayerPoint && preview.prayerPoint.scriptures.length > 0 && (
-            <div className="mt-4">
-              <p className="label mb-2">Scripture</p>
-              {preview.prayerPoint.scriptures.map((s, i) => (
-                <div key={i} className="mb-2">
-                  {s.text && <p className="italic text-fg/80 text-sm">&ldquo;{s.text}&rdquo;</p>}
-                  <p className="text-gold mt-0.5 text-xs font-semibold">{s.reference}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          {!preview.prayerPoint && (
-            <p className="text-sm text-fg-muted">No prayer point published for tomorrow yet.</p>
-          )}
-        </section>
-      )}
 
       <BottomNav active="today" programId={program.id} />
     </div>

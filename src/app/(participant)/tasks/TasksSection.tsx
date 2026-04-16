@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Clock, BookOpen, ListChecks, Check, Play, Pause, Square, RotateCcw } from "lucide-react";
+import { Clock, BookOpen, ListChecks, Check, Play, Pause, Square, RotateCcw, Lock } from "lucide-react";
 
 export type UITask = {
   id: string;
@@ -20,29 +20,31 @@ export type UITask = {
   } | null;
 };
 
-export default function TasksSection({ tasks }: { tasks: UITask[] }) {
+export default function TasksSection({ tasks, locked = false }: { tasks: UITask[]; locked?: boolean }) {
   return (
     <section>
-      <p className="label mb-3">Today&apos;s tasks</p>
+      <p className="label mb-3">{locked ? "Upcoming tasks" : "Today's tasks"}</p>
       <div className="space-y-3">
-        {tasks.map((t) => <TaskRow key={t.id} task={t} />)}
+        {tasks.map((t) => <TaskRow key={t.id} task={t} locked={locked} />)}
       </div>
     </section>
   );
 }
 
-function TaskRow({ task: initial }: { task: UITask }) {
+function TaskRow({ task: initial, locked }: { task: UITask; locked: boolean }) {
   const [task, setTask] = useState(initial);
   const Icon = task.type === "prayer" ? Clock : task.type === "reading" ? BookOpen : ListChecks;
   const completed = !!task.completion?.completed_at;
   return (
-    <div className="card p-4">
+    <div className={`card p-4 ${locked ? "opacity-70" : ""}`}>
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 ${completed ? "text-[color:var(--ok)]" : "text-gold"}`}><Icon size={18} /></div>
+        <div className={`mt-0.5 ${locked ? "text-fg-muted" : completed ? "text-[color:var(--ok)]" : "text-gold"}`}>
+          {locked ? <Lock size={18} /> : <Icon size={18} />}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div className="font-medium truncate">{task.title}</div>
-            {completed && (
+            {completed && !locked && (
               <div className="text-xs text-[color:var(--ok)] flex items-center gap-1">
                 <Check size={13} /> {task.completion!.points_awarded} pts
               </div>
@@ -53,11 +55,13 @@ function TaskRow({ task: initial }: { task: UITask }) {
             {task.duration_minutes && <span>{task.duration_minutes} min</span>}
             {task.target_start_time && <span>@ {task.target_start_time.slice(0, 5)}</span>}
           </div>
-          <div className="mt-3">
-            {task.type === "prayer" && <PrayerControl task={task} onChange={setTask} />}
-            {task.type === "reading" && <ReadingControl task={task} onChange={setTask} />}
-            {task.type === "other" && <OtherControl task={task} onChange={setTask} />}
-          </div>
+          {!locked && (
+            <div className="mt-3">
+              {task.type === "prayer" && <PrayerControl task={task} onChange={setTask} />}
+              {task.type === "reading" && <ReadingControl task={task} onChange={setTask} />}
+              {task.type === "other" && <OtherControl task={task} onChange={setTask} />}
+            </div>
+          )}
         </div>
       </div>
     </div>
