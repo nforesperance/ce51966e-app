@@ -4,7 +4,8 @@
       "Bash(.venv/bin/pip install:*)",
       "Bash(npm --version)",
       "Bash(npx --yes create-next-app@latest . --typescript --tailwind --app --src-dir --no-import-alias --eslint --use-npm --no-turbopack --yes)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(npm install *)"
     ],
     "additionalDirectories": [
       "/home/nfor/workspace/prayer/app/.venv",

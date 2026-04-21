@@ -10,16 +10,16 @@ export default async function DayEditorPage({ params }: { params: Promise<{ id: 
   const sb = supabaseAdmin();
   const { data: day } = await sb
     .from("program_days")
-    .select("id, day_number, date, program_id, programs(name)")
+    .select("id, day_number, date, program_id, programs(name, card_defaults)")
     .eq("id", dayId).maybeSingle();
   if (!day || day.program_id !== id) notFound();
 
   const raw = (day as { programs: unknown }).programs;
-  const program = Array.isArray(raw) ? raw[0] : (raw as { name: string });
+  const program = Array.isArray(raw) ? raw[0] : (raw as { name: string; card_defaults: Record<string, unknown> });
 
   const { data: prayerPoint } = await sb
     .from("prayer_points")
-    .select("id, title, body_markdown, image_url, scriptures(reference, text, position)")
+    .select("id, title, body_markdown, image_url, card_config, scriptures(reference, text, position)")
     .eq("program_day_id", dayId).maybeSingle();
 
   const { data: tasks } = await sb
@@ -45,11 +45,15 @@ export default async function DayEditorPage({ params }: { params: Promise<{ id: 
       </div>
       <DayEditorClient
         dayId={day.id}
+        programName={program?.name ?? ""}
+        dayNumber={day.day_number}
+        cardDefaults={(program?.card_defaults ?? {}) as Record<string, unknown>}
         initialPrayerPoint={{
           title: prayerPoint?.title ?? "",
           body_html: prayerPoint?.body_markdown ?? "",
           image_url: prayerPoint?.image_url ?? null,
           scriptures,
+          card_config: (prayerPoint?.card_config ?? {}) as Record<string, unknown>,
         }}
         initialTasks={tasks ?? []}
       />

@@ -4,9 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ImageIcon, X, Save, Check, Clock, BookOpen, ListChecks } from "lucide-react";
 import Editor from "@/components/Editor";
+import CardBuilder from "@/components/CardBuilder";
+import type { CardConfig } from "@/components/CardPreview";
 
 type Scripture = { reference: string; text: string };
-type PrayerPoint = { title: string; body_html: string; image_url: string | null; scriptures: Scripture[] };
+type PrayerPoint = {
+  title: string; body_html: string; image_url: string | null;
+  scriptures: Scripture[]; card_config: CardConfig;
+};
 
 type Task = {
   id: string;
@@ -25,9 +30,12 @@ type Task = {
 };
 
 export default function DayEditorClient({
-  dayId, initialPrayerPoint, initialTasks,
+  dayId, programName, dayNumber, cardDefaults, initialPrayerPoint, initialTasks,
 }: {
   dayId: string;
+  programName: string;
+  dayNumber: number;
+  cardDefaults: Record<string, unknown>;
   initialPrayerPoint: PrayerPoint;
   initialTasks: Task[];
 }) {
@@ -48,6 +56,7 @@ export default function DayEditorClient({
           title: pp.title || null,
           body_markdown: pp.body_html || null,
           image_url: pp.image_url || null,
+          card_config: pp.card_config ?? {},
           scriptures: pp.scriptures.filter((s) => s.reference.trim()).map((s) => ({
             reference: s.reference.trim(), text: s.text.trim() || null,
           })),
@@ -58,6 +67,9 @@ export default function DayEditorClient({
       setSavedAt(Date.now());
     } finally { setSaving(false); }
   }
+
+  // Effective card config = program defaults merged with per-prayer-point overrides.
+  const effectiveCardConfig: CardConfig = { ...(cardDefaults as CardConfig), ...pp.card_config };
 
   async function uploadImage(file: File) {
     if (file.size > 2 * 1024 * 1024) { alert("Image exceeds 2MB"); return; }
@@ -169,6 +181,19 @@ export default function DayEditorClient({
           </div>
         </div>
       </section>
+
+      {/* ---------- Card preview / export ---------- */}
+      <CardBuilder
+        config={effectiveCardConfig}
+        onChange={(c) => setPp((p) => ({ ...p, card_config: c }))}
+        groupName={programName}
+        level={null}
+        dayNumber={dayNumber}
+        title={pp.title || null}
+        bodyHtml={pp.body_html || null}
+        scriptures={pp.scriptures}
+        filenameBase={`${programName.replace(/\W+/g, "_")}_Day${dayNumber}`}
+      />
 
       {/* ---------- Tasks ---------- */}
       <section>

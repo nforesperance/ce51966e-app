@@ -11,6 +11,7 @@ const Body = z.object({
   title: z.string().max(200).nullable().optional(),
   body_markdown: z.string().max(30000).nullable().optional(),  // HTML from Tiptap
   image_url: z.string().url().nullable().optional(),
+  card_config: z.record(z.string(), z.unknown()).optional().default({}),
   scriptures: z.array(Scripture).max(20).default([]),
 });
 
@@ -31,6 +32,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ dayId: stri
     title: parsed.data.title ?? null,
     body_markdown: parsed.data.body_markdown ?? null,
     image_url: parsed.data.image_url ?? null,
+    card_config: parsed.data.card_config ?? {},
   };
   let id: string;
   if (existing) {
