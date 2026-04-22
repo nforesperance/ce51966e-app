@@ -54,7 +54,7 @@ export function firstWord(text: string): string {
 }
 
 // Suggested minimum dwell time to read the chapter — slow attentive read.
-const WORDS_PER_MINUTE = 200;
+const WORDS_PER_MINUTE = 80;
 export function minDwellSeconds(wordCount: number): number {
   const est = Math.ceil((wordCount / WORDS_PER_MINUTE) * 60);
   return Math.max(30, Math.min(est, 600)); // bounded [30s, 10m]
