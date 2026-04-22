@@ -29,7 +29,7 @@ export default async function ParticipantDrilldown({
 
   const taskIds = (tasks ?? []).map((t) => t.id);
   const { data: completions } = await sb.from("task_completions")
-    .select("*")
+    .select("*, chapter_states")
     .eq("user_id", userId)
     .in("task_id", taskIds.length ? taskIds : ["00000000-0000-0000-0000-000000000000"]);
 

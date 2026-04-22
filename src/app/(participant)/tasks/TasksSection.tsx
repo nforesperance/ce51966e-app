@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Clock, BookOpen, ListChecks, Check, Play, Pause, Square, RotateCcw, Lock } from "lucide-react";
+import { Clock, BookOpen, ListChecks, Check, Play, Pause, Square, RotateCcw, Lock, ChevronDown, ChevronUp } from "lucide-react";
 
 export type UITask = {
   id: string;
@@ -11,6 +11,8 @@ export type UITask = {
   target_start_time: string | null;
   max_points: number | null;
   chapters: string[];
+  translation?: "kjv" | "web";
+  chapter_states?: Record<string, { read_at?: string; reflection?: string | null }>;
   completion: {
     first_started_at: string | null;
     started_at: string | null;       // null when paused or not running
@@ -180,16 +182,18 @@ function PrayerControl({ task, onChange }: { task: UITask; onChange: (t: UITask)
 
 function ReadingControl({ task, onChange }: { task: UITask; onChange: (t: UITask) => void }) {
   const completed = !!task.completion?.completed_at;
-  const [checked, setChecked] = useState<Set<string>>(
-    () => completed ? new Set(task.chapters) : new Set()
+  const [states, setStates] = useState<Record<string, { read_at?: string; reflection?: string | null }>>(
+    () => task.chapter_states ?? {}
   );
+  const [openChapter, setOpenChapter] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const allDone = task.chapters.length > 0 && task.chapters.every((c) => checked.has(c));
+  const allDone = task.chapters.length > 0 && task.chapters.every((c) => !!states[c]?.read_at);
 
-  function toggle(c: string) {
-    if (completed) return;
-    setChecked((s) => { const n = new Set(s); n.has(c) ? n.delete(c) : n.add(c); return n; });
+  function onChapterDone(ch: string, entry: { read_at: string; reflection: string | null }) {
+    setStates((s) => ({ ...s, [ch]: entry }));
+    setOpenChapter(null);
   }
+
   async function complete() {
     setBusy(true);
     try {
@@ -203,28 +207,218 @@ function ReadingControl({ task, onChange }: { task: UITask; onChange: (t: UITask
     } finally { setBusy(false); }
   }
 
+  if (completed) {
+    return (
+      <div className="text-xs text-fg-muted">
+        Completed. {Object.keys(states).length} chapter(s) read.
+      </div>
+    );
+  }
+
   return (
     <div>
-      {task.chapters.length > 0 ? (
-        <ul className="space-y-1.5 mb-3">
-          {task.chapters.map((c) => (
-            <li key={c}>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" disabled={completed}
-                  checked={checked.has(c)} onChange={() => toggle(c)} />
-                <span className={checked.has(c) ? "line-through text-fg-muted" : ""}>{c}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      ) : (
+      {task.chapters.length === 0 ? (
         <p className="text-xs text-fg-muted mb-3">No chapters listed.</p>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {task.chapters.map((c) => {
+            const done = !!states[c]?.read_at;
+            const isOpen = openChapter === c;
+            return (
+              <div key={c} className="border border-[color:var(--border)] rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenChapter(isOpen ? null : c)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-left active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`h-5 w-5 rounded-full border grid place-items-center text-[10px] ${done ? "border-[color:var(--ok)] text-[color:var(--ok)]" : "border-[color:var(--border)] text-fg-muted"}`}>
+                      {done ? <Check size={12} /> : ""}
+                    </div>
+                    <span className={done ? "text-fg-muted" : "text-fg"}>{c}</span>
+                  </div>
+                  {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                </button>
+                {isOpen && !done && (
+                  <ChapterReader
+                    taskId={task.id}
+                    chapter={c}
+                    translation={task.translation ?? "kjv"}
+                    onDone={(entry) => onChapterDone(c, entry)}
+                  />
+                )}
+                {isOpen && done && states[c]?.reflection && (
+                  <div className="px-3 py-2 text-xs text-fg-muted border-t border-[color:var(--border)] bg-white/5">
+                    <span className="label mr-2">Your reflection</span>
+                    {states[c]!.reflection}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
+
       {!completed && (
         <button onClick={complete} disabled={busy || !allDone} className="btn-gold text-sm flex items-center gap-2">
-          <Check size={14} /> {busy ? "Saving…" : "Mark complete"}
+          <Check size={14} /> {busy ? "Saving…" : allDone ? "Mark task complete" : `Read ${task.chapters.length - Object.values(states).filter(s => s.read_at).length} more`}
         </button>
       )}
+    </div>
+  );
+}
+
+function ChapterReader({
+  taskId, chapter, translation, onDone,
+}: {
+  taskId: string;
+  chapter: string;
+  translation: "kjv" | "web";
+  onDone: (entry: { read_at: string; reflection: string | null }) => void;
+}) {
+  type Verse = { verse: number; text: string };
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [verses, setVerses] = useState<Verse[]>([]);
+  const [minSec, setMinSec] = useState<number>(60);
+  const [recallVerse, setRecallVerse] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  const [recall, setRecall] = useState("");
+  const [reflection, setReflection] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const startRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    let abort = false;
+    async function load() {
+      setLoading(true); setErr(null);
+      try {
+        const url = `/api/reading/chapter?ref=${encodeURIComponent(chapter)}&translation=${translation}`;
+        const res = await fetch(url);
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error ?? "Failed to load");
+        if (abort) return;
+        setVerses(j.verses ?? []);
+        setMinSec(j.min_dwell_seconds ?? 60);
+        setRecallVerse(j.recall_verse ?? null);
+        startRef.current = Date.now();
+      } catch (e) {
+        if (!abort) setErr(e instanceof Error ? e.message : String(e));
+      } finally { if (!abort) setLoading(false); }
+    }
+    load();
+    return () => { abort = true; };
+  }, [chapter, translation]);
+
+  // Tick the elapsed clock.
+  useEffect(() => {
+    if (loading || err) return;
+    const iv = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, [loading, err]);
+
+  // Track scroll-to-bottom on the verses container.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function check() {
+      const el = scrollRef.current!;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 24) setScrolled(true);
+    }
+    check();
+    el.addEventListener("scroll", check);
+    return () => el.removeEventListener("scroll", check);
+  }, [verses]);
+
+  async function submit() {
+    if (recallVerse == null) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/reading/${taskId}/chapter`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chapter,
+          reflection: reflection.trim(),
+          dwell_seconds: Math.floor((Date.now() - startRef.current) / 1000),
+          recall_verse: recallVerse,
+          recall_answer: recall.trim(),
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) { alert(j.error ?? "Failed"); return; }
+      onDone({ read_at: new Date().toISOString(), reflection: reflection.trim() || null });
+    } finally { setSubmitting(false); }
+  }
+
+  if (loading) return <div className="px-3 py-3 text-xs text-fg-muted">Loading chapter…</div>;
+  if (err) return <div className="px-3 py-3 text-xs text-[color:var(--danger)]">Error: {err}</div>;
+
+  const dwellOk = elapsed >= minSec;
+  const dwellLeft = Math.max(0, minSec - elapsed);
+  const canSubmit = dwellOk && scrolled && recall.trim().length > 0 && reflection.trim().length > 0;
+
+  return (
+    <div className="border-t border-[color:var(--border)] bg-black/20">
+      <div
+        ref={scrollRef}
+        className="max-h-[50vh] overflow-y-auto px-3 py-3 text-[14px] leading-relaxed"
+      >
+        {verses.map((v) => (
+          <p key={v.verse} className="mb-2">
+            <sup className="text-gold text-[10px] mr-1">{v.verse}</sup>
+            {v.text}
+          </p>
+        ))}
+      </div>
+
+      <div className="px-3 py-3 border-t border-[color:var(--border)] space-y-3">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-fg-muted">
+          <span>
+            {dwellOk
+              ? <span className="text-[color:var(--ok)]">✓ Read time met</span>
+              : <>Keep reading… {Math.floor(dwellLeft / 60)}:{String(dwellLeft % 60).padStart(2, "0")} left</>}
+          </span>
+          <span>
+            {scrolled
+              ? <span className="text-[color:var(--ok)]">✓ Scrolled to end</span>
+              : "Scroll to the bottom of the chapter"}
+          </span>
+        </div>
+
+        <div>
+          <label className="label block mb-1">
+            Type the first word of verse {recallVerse ?? "—"}
+          </label>
+          <input
+            className="input text-sm"
+            value={recall}
+            onChange={(e) => setRecall(e.target.value)}
+            autoCapitalize="off"
+            autoComplete="off"
+            placeholder="One word"
+          />
+        </div>
+
+        <div>
+          <label className="label block mb-1">
+            In one sentence — what stood out?
+          </label>
+          <textarea
+            rows={2}
+            className="input text-sm"
+            value={reflection}
+            onChange={(e) => setReflection(e.target.value)}
+            placeholder="A verse, an idea, something to pray about…"
+          />
+        </div>
+
+        <button onClick={submit} disabled={submitting || !canSubmit}
+          className="btn-gold text-sm flex items-center gap-2">
+          <Check size={14} /> {submitting ? "Saving…" : "Mark chapter read"}
+        </button>
+      </div>
     </div>
   );
 }

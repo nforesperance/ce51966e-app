@@ -15,6 +15,7 @@ const TaskBody = z.object({
   max_points: z.number().int().min(1).max(10000).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional().default({}),
   position: z.number().int().min(0).max(100).optional(),
+  translation: z.enum(["kjv", "web"]).optional().default("kjv"),
 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ dayId: string }> }) {
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ dayId: str
     zero_marks_end_window_minutes: parsed.data.zero_marks_end_window_minutes ?? 120,
     max_points: parsed.data.max_points ?? 100,
     metadata: parsed.data.metadata ?? {},
+    translation: parsed.data.translation ?? "kjv",
     position,
   }).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

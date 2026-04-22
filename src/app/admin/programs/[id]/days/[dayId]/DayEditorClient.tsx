@@ -27,6 +27,7 @@ type Task = {
   max_points: number | null;
   metadata: Record<string, unknown>;
   position: number;
+  translation?: "kjv" | "web";
 };
 
 export default function DayEditorClient({
@@ -269,6 +270,7 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
   const [maxPts, setMaxPts] = useState<string>((task?.max_points ?? 100).toString());
   const initChapters = (task?.metadata?.chapters as string[] | undefined) ?? [];
   const [chapters, setChapters] = useState<string>(initChapters.join(", "));
+  const [translation, setTranslation] = useState<"kjv" | "web">(task?.translation ?? "kjv");
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -291,6 +293,7 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
         body.metadata = {
           chapters: chapters.split(",").map((s) => s.trim()).filter(Boolean),
         };
+        body.translation = translation;
       }
 
       if (isNew) body.type = type;
@@ -377,12 +380,28 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
           )}
 
           {type === "reading" && (
-            <div>
-              <label className="label block mb-1">Chapters (comma-separated)</label>
-              <input className="input" placeholder="Psalm 1, Psalm 2"
-                value={chapters} onChange={(e) => setChapters(e.target.value)} />
-              <p className="text-xs text-fg-muted mt-1">Participants will see one checkbox per chapter.</p>
-            </div>
+            <>
+              <div>
+                <label className="label block mb-1">Chapters (comma-separated)</label>
+                <input className="input" placeholder="Psalm 1, Psalm 2"
+                  value={chapters} onChange={(e) => setChapters(e.target.value)} />
+                <p className="text-xs text-fg-muted mt-1">
+                  Participants read each chapter in-app, must dwell on it, answer a recall prompt,
+                  and write a one-sentence reflection.
+                </p>
+              </div>
+              <div>
+                <label className="label block mb-1">Bible translation</label>
+                <select className="input w-40" value={translation}
+                  onChange={(e) => setTranslation(e.target.value as "kjv" | "web")}>
+                  <option value="kjv">KJV — King James</option>
+                  <option value="web">WEB — World English Bible</option>
+                </select>
+                <p className="text-xs text-fg-muted mt-1">
+                  Only public-domain translations available. NIV is not free.
+                </p>
+              </div>
+            </>
           )}
 
           <div>

@@ -14,6 +14,7 @@ const Patch = z.object({
   max_points: z.number().int().min(1).max(10000).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   position: z.number().int().min(0).max(100).optional(),
+  translation: z.enum(["kjv", "web"]).optional(),
 });
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ taskId: string }> }) {

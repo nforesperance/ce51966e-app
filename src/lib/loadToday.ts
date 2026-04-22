@@ -122,7 +122,7 @@ export async function loadToday(userId: string): Promise<TodayData> {
       .sort((a, b) => a.position - b.position);
 
     const { data: tasks } = await sb.from("tasks")
-      .select("id, type, title, duration_minutes, target_start_time, max_points, metadata, position")
+      .select("id, type, title, duration_minutes, target_start_time, max_points, metadata, translation, position")
       .eq("program_day_id", effectiveDay.id).order("position");
 
     // Completions only apply to the actual today (not to a locked preview).
@@ -132,7 +132,7 @@ export async function loadToday(userId: string): Promise<TodayData> {
     // If we're showing today, we need the full completion fields, not just completed_at.
     if (!useNext && taskIds.length) {
       const { data: full } = await sb.from("task_completions")
-        .select("task_id, first_started_at, started_at, elapsed_seconds, completed_at, points_awarded")
+        .select("task_id, first_started_at, started_at, elapsed_seconds, completed_at, points_awarded, chapter_states")
         .eq("user_id", userId)
         .in("task_id", taskIds);
       compByTask.clear();
@@ -146,6 +146,7 @@ export async function loadToday(userId: string): Promise<TodayData> {
         elapsed_seconds: number;
         completed_at: string | null;
         points_awarded: number;
+        chapter_states?: Record<string, unknown>;
       } | undefined;
       return {
         id: t.id, type: t.type, title: t.title,
@@ -153,6 +154,8 @@ export async function loadToday(userId: string): Promise<TodayData> {
         target_start_time: t.target_start_time,
         max_points: t.max_points,
         chapters: (t.metadata?.chapters as string[] | undefined) ?? [],
+        translation: ((t as unknown as { translation?: string }).translation ?? "kjv") as "kjv" | "web",
+        chapter_states: useNext ? {} : ((c?.chapter_states ?? {}) as Record<string, { read_at?: string; reflection?: string | null }>),
         completion: useNext ? null : (c ?? null),
       };
     });

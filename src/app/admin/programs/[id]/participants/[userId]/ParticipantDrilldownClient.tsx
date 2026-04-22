@@ -21,6 +21,7 @@ type Task = {
     points_awarded: number;
     admin_override: boolean;
     override_reason: string | null;
+    chapter_states?: Record<string, { read_at?: string; reflection?: string | null; dwell_seconds?: number; recall_verse?: number }>;
   } | null;
 };
 type Day = { id: string; day_number: number; date: string; tasks: Task[] };
@@ -168,29 +169,55 @@ function TaskLine({ task, onOverride }: { task: Task; onOverride: (t: Task) => v
   const Icon = task.type === "prayer" ? Clock : task.type === "reading" ? BookOpen : ListChecks;
   const c = task.completion;
   const done = !!c?.completed_at;
+  const chapterEntries = Object.entries(c?.chapter_states ?? {}) as [string, { read_at?: string; reflection?: string | null; dwell_seconds?: number }][];
+
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-[color:var(--border)] first:border-0 pt-2 first:pt-0">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Icon size={15} className={done ? "text-[color:var(--ok)]" : "text-fg-muted"} />
-        <div className="min-w-0">
-          <div className="text-sm truncate">{task.title}</div>
-          <div className="text-[11px] text-fg-muted flex flex-wrap gap-x-3">
-            <span className="uppercase tracking-widest">{task.type}</span>
-            {task.type === "prayer" && c?.elapsed_seconds
-              ? <span>{Math.floor(c.elapsed_seconds / 60)}:{(c.elapsed_seconds % 60).toString().padStart(2, "0")} prayed</span>
-              : null}
-            {c?.admin_override && <span className="text-gold">override</span>}
+    <div className="border-t border-[color:var(--border)] first:border-0 pt-2 first:pt-0">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Icon size={15} className={done ? "text-[color:var(--ok)]" : "text-fg-muted"} />
+          <div className="min-w-0">
+            <div className="text-sm truncate">{task.title}</div>
+            <div className="text-[11px] text-fg-muted flex flex-wrap gap-x-3">
+              <span className="uppercase tracking-widest">{task.type}</span>
+              {task.type === "prayer" && c?.elapsed_seconds
+                ? <span>{Math.floor(c.elapsed_seconds / 60)}:{(c.elapsed_seconds % 60).toString().padStart(2, "0")} prayed</span>
+                : null}
+              {task.type === "reading" && chapterEntries.length > 0
+                ? <span>{chapterEntries.length}/{task.chapters.length} chapters</span>
+                : null}
+              {c?.admin_override && <span className="text-gold">override</span>}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="text-sm tabular-nums font-semibold text-gold-soft">
-          {done ? c.points_awarded : <span className="text-fg-muted">—</span>}
+        <div className="flex items-center gap-3">
+          <div className="text-sm tabular-nums font-semibold text-gold-soft">
+            {done ? c.points_awarded : <span className="text-fg-muted">—</span>}
+          </div>
+          <button onClick={() => onOverride(task)} className="text-fg-muted hover:text-gold" title="Override">
+            <MoreHorizontal size={16} />
+          </button>
         </div>
-        <button onClick={() => onOverride(task)} className="text-fg-muted hover:text-gold" title="Override">
-          <MoreHorizontal size={16} />
-        </button>
       </div>
+      {task.type === "reading" && chapterEntries.length > 0 && (
+        <div className="mt-2 ml-[22px] space-y-1">
+          {chapterEntries.map(([ref, st]) => (
+            <div key={ref} className="text-[12px] bg-white/5 rounded-md px-2 py-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-gold text-[11px] font-semibold">{ref}</span>
+                <span className="text-fg-muted text-[10px] tabular-nums">
+                  {st.dwell_seconds ? `${Math.floor((st.dwell_seconds ?? 0) / 60)}m ${(st.dwell_seconds ?? 0) % 60}s` : ""}
+                </span>
+              </div>
+              {st.reflection ? (
+                <div className="text-fg/85 mt-0.5">&ldquo;{st.reflection}&rdquo;</div>
+              ) : (
+                <div className="text-fg-muted text-[11px] italic">No reflection</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

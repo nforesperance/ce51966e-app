@@ -19,6 +19,20 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ taskId: s
     .select("*").eq("task_id", taskId).eq("user_id", user.id).maybeSingle();
   if (existing?.completed_at) return NextResponse.json({ completion: existing });
 
+  // Reading tasks require every listed chapter to be verified first.
+  if (task.type === "reading") {
+    const chapters = (task.metadata?.chapters as string[] | undefined) ?? [];
+    const states = (existing?.chapter_states ?? {}) as Record<string, unknown>;
+    const missing = chapters.filter((c) => !states[c]);
+    if (chapters.length === 0) return NextResponse.json({ error: "No chapters configured" }, { status: 400 });
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: `Finish reading all chapters first (missing: ${missing.join(", ")}).` },
+        { status: 400 }
+      );
+    }
+  }
+
   const now = new Date();
   const payload = {
     task_id: taskId, user_id: user.id,
