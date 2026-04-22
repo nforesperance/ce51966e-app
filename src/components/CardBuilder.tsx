@@ -107,6 +107,15 @@ export default function CardBuilder({
             Include the big day number
           </label>
         </Field>
+
+        <Field label="Rounded corners">
+          <label className="flex items-center gap-2 text-sm pt-2">
+            <input type="checkbox"
+              checked={config.rounded_corners !== false}
+              onChange={(e) => patch({ rounded_corners: e.target.checked })} />
+            Rounded card corners
+          </label>
+        </Field>
       </div>
 
       {/* Preview */}

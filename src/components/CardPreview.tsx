@@ -13,6 +13,7 @@ export type CardConfig = {
   verse_font_size?: number;
   footer_text?: string;
   show_day?: boolean;
+  rounded_corners?: boolean;
 };
 
 export const THEMES: { value: string; label: string; accent: string; bg: string }[] = [
@@ -64,13 +65,14 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
   const prayerSize = config.prayer_font_size ?? 15;
   const verseSize = config.verse_font_size ?? 13;
 
+  const rounded = config.rounded_corners !== false;
   return (
     <div
       ref={ref}
       style={{
         width,
         background: bg,
-        borderRadius: 18,
+        borderRadius: rounded ? 18 : 0,
         padding: "32px 28px 24px",
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
         position: "relative",
