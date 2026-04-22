@@ -13,6 +13,7 @@ export type CardConfig = {
   verse_font_size?: number;
   footer_text?: string;
   show_day?: boolean;
+  show_level?: boolean;
   rounded_corners?: boolean;
 };
 
@@ -38,7 +39,6 @@ type Scripture = { reference: string; text: string | null };
 export type CardProps = {
   config: CardConfig;
   groupName: string;
-  level: string | null;
   dayNumber: number | null;
   title: string | null;
   bodyHtml: string | null;
@@ -47,7 +47,7 @@ export type CardProps = {
 };
 
 const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
-  { config, groupName, level, dayNumber, title, bodyHtml, scriptures, width = 440 },
+  { config, groupName, dayNumber, title, bodyHtml, scriptures, width = 440 },
   ref
 ) {
   const theme = THEME_MAP[config.theme ?? "theme-royal"] ?? THEME_MAP["theme-royal"];
@@ -55,12 +55,10 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
   const bg = theme.bg;
 
   const dispGroup = config.group_name?.trim() || groupName;
-  const dispLevel = config.level?.trim() || level || null;
   const showDay = config.show_day !== false && dayNumber != null;
   const footer = config.footer_text?.trim();
 
   const groupSize = config.group_name_size ?? 26;
-  const levelSize = config.level_size ?? 11;
   const daySize = config.day_size ?? 44;
   const prayerSize = config.prayer_font_size ?? 15;
   const verseSize = config.verse_font_size ?? 13;
@@ -96,20 +94,6 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
         >
           {dispGroup}
         </div>
-        {dispLevel && (
-          <div
-            style={{
-              display: "inline-block", marginTop: 8,
-              padding: "3px 16px",
-              border: `1.5px solid ${accent}`,
-              borderRadius: 20,
-              fontSize: levelSize, color: accent,
-              letterSpacing: 1.5, textTransform: "uppercase",
-            }}
-          >
-            {dispLevel}
-          </div>
-        )}
       </div>
       <div style={{ width: 50, height: 2, background: accent, margin: "10px auto", borderRadius: 2 }} />
 

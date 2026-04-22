@@ -8,13 +8,12 @@ type Scripture = { reference: string; text: string };
 
 export default function CardBuilder({
   config, onChange,
-  groupName, level, dayNumber, title, bodyHtml, scriptures,
+  groupName, dayNumber, title, bodyHtml, scriptures,
   filenameBase,
 }: {
   config: CardConfig;
   onChange: (c: CardConfig) => void;
   groupName: string;
-  level: string | null;
   dayNumber: number | null;
   title: string | null;
   bodyHtml: string | null;
@@ -82,16 +81,8 @@ export default function CardBuilder({
             onChange={(e) => patch({ group_name: e.target.value })} />
         </Field>
 
-        <Field label="Level (override)">
-          <input className="input" placeholder={level ?? ""}
-            value={config.level ?? ""}
-            onChange={(e) => patch({ level: e.target.value })} />
-        </Field>
-
         <Slider label="Group size"  value={config.group_name_size ?? 26} min={14} max={44}
           onChange={(v) => patch({ group_name_size: v })} />
-        <Slider label="Level size"  value={config.level_size ?? 11} min={8}  max={22}
-          onChange={(v) => patch({ level_size: v })} />
         <Slider label="Day size"    value={config.day_size ?? 44} min={20} max={72}
           onChange={(v) => patch({ day_size: v })} />
         <Slider label="Body size"   value={config.prayer_font_size ?? 15} min={10} max={24}
@@ -124,7 +115,6 @@ export default function CardBuilder({
           ref={cardRef}
           config={config}
           groupName={groupName}
-          level={level}
           dayNumber={dayNumber}
           title={title}
           bodyHtml={bodyHtml}

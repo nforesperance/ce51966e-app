@@ -58,7 +58,6 @@ export default async function TodayPage() {
           <CardPreview
             config={effectiveCardConfig}
             groupName={program.name}
-            level={user.level}
             dayNumber={day.day_number}
             title={prayerPoint.title}
             bodyHtml={prayerPoint.body_markdown}

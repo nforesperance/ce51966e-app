@@ -188,7 +188,6 @@ export default function DayEditorClient({
         config={effectiveCardConfig}
         onChange={(c) => setPp((p) => ({ ...p, card_config: c }))}
         groupName={programName}
-        level={null}
         dayNumber={dayNumber}
         title={pp.title || null}
         bodyHtml={pp.body_html || null}
