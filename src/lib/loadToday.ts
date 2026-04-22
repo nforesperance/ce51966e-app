@@ -4,23 +4,28 @@ import { zonedToUtc, effectiveProgramDate } from "@/lib/time";
 import type { UITask } from "@/app/(participant)/tasks/TasksSection";
 
 export type TodayData = {
-  program: { id: string; name: string; timezone: string; next_day_preview_hours: number; day_unlock_offset_minutes: number };
+  program: {
+    id: string; name: string; timezone: string;
+    next_day_preview_hours: number; day_unlock_offset_minutes: number;
+    card_defaults: Record<string, unknown>;
+  };
   day: { id: string; day_number: number; date: string };
   prayerPoint: {
     title: string | null; body_markdown: string | null; image_url: string | null;
+    card_config: Record<string, unknown>;
     scriptures: { reference: string; text: string | null }[];
   } | null;
   tasks: UITask[];
   locked: boolean;
   lockedUntilIso: string | null;
-  allTodayDone: boolean;       // today's tasks all completed (useful when we stayed on today)
+  allTodayDone: boolean;
 } | null;
 
 export async function loadToday(userId: string): Promise<TodayData> {
   const sb = supabaseAdmin();
   const { data: memberships } = await sb
     .from("program_participants")
-    .select("program_id, programs(id, name, timezone, start_date, end_date, next_day_preview_hours, day_unlock_offset_minutes)")
+    .select("program_id, programs(id, name, timezone, start_date, end_date, next_day_preview_hours, day_unlock_offset_minutes, card_defaults)")
     .eq("user_id", userId);
   if (!memberships?.length) return null;
 
@@ -30,6 +35,7 @@ export async function loadToday(userId: string): Promise<TodayData> {
       id: string; name: string; timezone: string;
       start_date: string; end_date: string;
       next_day_preview_hours: number; day_unlock_offset_minutes: number;
+      card_defaults: Record<string, unknown>;
     };
     if (!p) continue;
 
@@ -103,12 +109,12 @@ export async function loadToday(userId: string): Promise<TodayData> {
     // page isn't blank.
     let { data: pp } = await sb
       .from("prayer_points")
-      .select("title, body_markdown, image_url, scriptures(reference, text, position)")
+      .select("title, body_markdown, image_url, card_config, scriptures(reference, text, position)")
       .eq("program_day_id", effectiveDay.id).maybeSingle();
     if (!pp && useNext) {
       const r = await sb
         .from("prayer_points")
-        .select("title, body_markdown, image_url, scriptures(reference, text, position)")
+        .select("title, body_markdown, image_url, card_config, scriptures(reference, text, position)")
         .eq("program_day_id", currentDay.id).maybeSingle();
       pp = r.data;
     }
@@ -156,10 +162,12 @@ export async function loadToday(userId: string): Promise<TodayData> {
         id: p.id, name: p.name, timezone: p.timezone,
         next_day_preview_hours: p.next_day_preview_hours,
         day_unlock_offset_minutes: p.day_unlock_offset_minutes ?? 0,
+        card_defaults: (p.card_defaults ?? {}) as Record<string, unknown>,
       },
       day: { id: effectiveDay.id, day_number: effectiveDay.day_number, date: effectiveDay.date },
       prayerPoint: pp ? {
         title: pp.title, body_markdown: pp.body_markdown, image_url: pp.image_url,
+        card_config: (pp.card_config ?? {}) as Record<string, unknown>,
         scriptures: scriptures.map((s) => ({ reference: s.reference, text: s.text })),
       } : null,
       tasks: uiTasks,

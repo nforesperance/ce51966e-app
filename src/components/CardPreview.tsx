@@ -43,7 +43,7 @@ export type CardProps = {
   title: string | null;
   bodyHtml: string | null;
   scriptures: Scripture[];
-  width?: number;                // for fixed export size
+  width?: number | string;       // 440 for export; "100%" for responsive on-page render
 };
 
 const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
