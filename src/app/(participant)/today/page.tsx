@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
 import { loadToday } from "@/lib/loadToday";
 import BottomNav from "@/components/BottomNav";
 import LockedBanner from "@/components/LockedBanner";
 import CardPreview, { type CardConfig } from "@/components/CardPreview";
+import ProgramSwitcher from "@/components/ProgramSwitcher";
 
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const data = await loadToday(user.id);
+  const preferred = (await cookies()).get("elmoan_program")?.value ?? null;
+  const data = await loadToday(user.id, preferred);
 
   if (!data) {
     return (
@@ -22,7 +25,7 @@ export default async function TodayPage() {
     );
   }
 
-  const { program, day, prayerPoint, locked, lockedUntilIso, allTodayDone } = data;
+  const { program, day, prayerPoint, locked, lockedUntilIso, allTodayDone, availablePrograms } = data;
   const effectiveCardConfig: CardConfig = {
     ...(program.card_defaults as CardConfig),
     ...((prayerPoint?.card_config ?? {}) as CardConfig),
@@ -30,6 +33,7 @@ export default async function TodayPage() {
 
   return (
     <div className="pt-3 pb-16">
+      <ProgramSwitcher programs={availablePrograms} currentId={program.id} />
       <div className="flex items-center justify-between mb-3">
         <span className="label">{program.name}</span>
         <span className="pill">Day {day.day_number}</span>

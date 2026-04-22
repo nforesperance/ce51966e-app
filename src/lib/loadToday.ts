@@ -26,9 +26,13 @@ export type TodayData = {
   locked: boolean;
   lockedUntilIso: string | null;
   allTodayDone: boolean;
+  availablePrograms: { id: string; name: string }[];
 } | null;
 
-export async function loadToday(userId: string): Promise<TodayData> {
+export async function loadToday(
+  userId: string,
+  preferredProgramId?: string | null,
+): Promise<TodayData> {
   const sb = supabaseAdmin();
   const { data: memberships } = await sb
     .from("program_participants")
@@ -43,19 +47,24 @@ export async function loadToday(userId: string): Promise<TodayData> {
     if (p) programs.push(p);
   }
 
-  // Evaluate every program in parallel, then prefer:
-  //   1. active (non-locked, has today content) — user actually has work to do
-  //   2. locked (preview mode)
-  //   3. no-content — today in range but no tasks or prayer point
   const results = await Promise.all(programs.map((p) => loadForProgram(p, userId)));
   const nonNull = results.filter((r): r is NonNullable<TodayData> => r !== null);
   if (nonNull.length === 0) return null;
 
-  const active = nonNull.find((r) => !r.locked && r.tasks.length > 0);
-  if (active) return active;
-  const lockedOne = nonNull.find((r) => r.locked);
-  if (lockedOne) return lockedOne;
-  return nonNull[0];
+  const availablePrograms = nonNull.map((r) => ({ id: r.program.id, name: r.program.name }));
+
+  // Caller's explicit preference wins if still active today.
+  const preferred = preferredProgramId
+    ? nonNull.find((r) => r.program.id === preferredProgramId)
+    : null;
+
+  const pick =
+    preferred
+    ?? nonNull.find((r) => !r.locked && r.tasks.length > 0)
+    ?? nonNull.find((r) => r.locked)
+    ?? nonNull[0];
+
+  return { ...pick, availablePrograms };
 }
 
 async function loadForProgram(p: Program, userId: string): Promise<TodayData> {
@@ -181,5 +190,6 @@ async function loadForProgram(p: Program, userId: string): Promise<TodayData> {
     locked: useNext,
     lockedUntilIso,
     allTodayDone: allTodayDone && !useNext,
+    availablePrograms: [],          // populated at the loadToday level
   };
 }

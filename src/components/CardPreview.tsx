@@ -73,7 +73,7 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
         width,
         background: bg,
         borderRadius: rounded ? 18 : 0,
-        padding: "32px 28px 24px",
+        padding: "18px 18px 14px",
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
         position: "relative",
         overflow: "hidden",
@@ -87,7 +87,7 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
           background: `linear-gradient(90deg, ${accent}, ${lighten(accent)}, ${accent})`,
         }}
       />
-      <div style={{ textAlign: "center", paddingTop: 8 }}>
+      <div style={{ textAlign: "center", paddingTop: 4 }}>
         <div
           style={{
             fontSize: groupSize, fontWeight: 800, color: accent,
@@ -111,7 +111,7 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
           </div>
         )}
       </div>
-      <div style={{ width: 50, height: 2, background: accent, margin: "16px auto", borderRadius: 2 }} />
+      <div style={{ width: 50, height: 2, background: accent, margin: "10px auto", borderRadius: 2 }} />
 
       {showDay && (
         <>
@@ -131,7 +131,7 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
           >
             {dayNumber}
           </div>
-          <div style={{ width: 50, height: 2, background: accent, margin: "16px auto", borderRadius: 2 }} />
+          <div style={{ width: 50, height: 2, background: accent, margin: "10px auto", borderRadius: 2 }} />
         </>
       )}
 
