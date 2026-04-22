@@ -193,8 +193,9 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
         </div>
       )}
       <style>{`
-        .card-prose p { margin: 0 0 0.3em 0; }
+        .card-prose p { margin: 0 0 0.55em 0; min-height: 1em; }
         .card-prose p:last-child { margin-bottom: 0; }
+        .card-prose p:empty::before { content: "\\00a0"; }
         .card-prose strong { color: inherit; font-weight: 700; }
         .card-prose em { font-style: italic; }
         .card-prose ul, .card-prose ol { margin: 4px 0 4px 20px; }

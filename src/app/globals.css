@@ -162,9 +162,11 @@ input[type="datetime-local"].input {
 .prose-prayer h1, .prose-prayer h2, .prose-prayer h3 { color: var(--gold-soft); }
 .prose-prayer h2 { font-size: 1.1rem; font-weight: 600; margin: 0.75rem 0 0.25rem; }
 .prose-prayer h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.prose-prayer p { margin: 0.5rem 0; }
+.prose-prayer p { margin: 0.75rem 0; min-height: 1em; }
 .prose-prayer p:first-child { margin-top: 0; }
 .prose-prayer p:last-child { margin-bottom: 0; }
+.prose-prayer p:empty::before { content: "\00a0"; }  /* preserve empty lines */
+.prose-prayer br { line-height: 1.6; }
 .prose-prayer ul, .prose-prayer ol { margin: 0.5rem 0 0.5rem 1.2rem; }
 .prose-prayer ul { list-style: disc; }
 .prose-prayer ol { list-style: decimal; }

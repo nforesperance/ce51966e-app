@@ -39,14 +39,48 @@ export default function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
+  // Remember the last selection so we can restore it when the user interacts
+  // with a control outside the editor (number input, color picker).
+  const savedFrom = useRef<number | null>(null);
+  const savedTo = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!editor) return;
+    const capture = () => {
+      const { from, to } = editor.state.selection;
+      if (from !== to) {
+        savedFrom.current = from;
+        savedTo.current = to;
+      }
+    };
+    editor.on("selectionUpdate", capture);
+    return () => { editor.off("selectionUpdate", capture); };
+  }, [editor]);
+
   const sizeInput = useRef<HTMLInputElement | null>(null);
 
   if (!editor) return null;
 
+  // Before running a command from an outside control, restore the captured
+  // selection so the mark/attribute lands on the right range.
+  function withSelection(run: () => void) {
+    if (savedFrom.current != null && savedTo.current != null) {
+      editor!.commands.setTextSelection({ from: savedFrom.current, to: savedTo.current });
+    }
+    editor!.commands.focus();
+    run();
+  }
+
+  // preventDefault on mousedown keeps focus in the editor so native selection
+  // isn't collapsed by the button taking focus.
+  const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
+
   const Btn = ({ onClick, active, children, title }: {
     onClick: () => void; active?: boolean; children: React.ReactNode; title: string;
   }) => (
-    <button type="button" title={title} onClick={onClick}
+    <button type="button" title={title}
+      onMouseDown={noFocusSteal}
+      onClick={onClick}
       className={`p-1.5 rounded hover:bg-white/5 ${active ? "text-gold" : "text-fg-muted"}`}>
       {children}
     </button>
@@ -57,8 +91,18 @@ export default function Editor({
     if (!raw) return;
     const num = parseInt(raw, 10);
     if (!num || num < 6 || num > 96) return;
-    (editor!.chain().focus() as unknown as { setFontSize: (v: string) => { run: () => void } })
-      .setFontSize(`${num}px`).run();
+    withSelection(() => {
+      (editor!.chain() as unknown as { setFontSize: (v: string) => { run: () => void } })
+        .setFontSize(`${num}px`).run();
+    });
+  }
+
+  function applyColor(c: string) {
+    withSelection(() => { editor!.chain().setColor(c).run(); });
+  }
+
+  function resetColor() {
+    withSelection(() => { editor!.chain().unsetColor().run(); });
   }
 
   return (
@@ -86,9 +130,12 @@ export default function Editor({
             ref={sizeInput}
             type="number" min={6} max={96} placeholder="14"
             defaultValue={14}
+            onMouseDown={noFocusSteal}
             className="w-12 text-center bg-transparent border border-[color:var(--border)] rounded px-1 py-0.5 text-fg"
           />
-          <button type="button" onClick={applyFontSize}
+          <button type="button"
+            onMouseDown={noFocusSteal}
+            onClick={applyFontSize}
             className="px-2 py-0.5 bg-gold text-[color:#111a3a] rounded text-[11px] font-semibold">
             Apply
           </button>
@@ -96,18 +143,21 @@ export default function Editor({
 
         <span className="mx-1 h-4 w-px bg-[color:var(--border)]" />
 
-        <label className="flex items-center gap-1 text-xs text-fg-muted cursor-pointer">
+        <div className="flex items-center gap-1 text-xs text-fg-muted">
           <span>Color</span>
           <input
             type="color"
-            onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+            onMouseDown={noFocusSteal}
+            onChange={(e) => applyColor(e.target.value)}
             className="h-6 w-6 rounded cursor-pointer border border-[color:var(--border)] bg-transparent p-0"
           />
-          <button type="button" className="text-fg-muted hover:text-gold underline"
-            onClick={() => editor.chain().focus().unsetColor().run()}>
+          <button type="button"
+            onMouseDown={noFocusSteal}
+            onClick={resetColor}
+            className="text-fg-muted hover:text-gold underline">
             reset
           </button>
-        </label>
+        </div>
 
         <div className="flex-1" />
 
