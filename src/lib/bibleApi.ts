@@ -56,8 +56,38 @@ export function normalizeWord(w: string) {
 }
 
 export function firstWord(text: string): string {
-  const first = text.trim().split(/\s+/)[0] ?? "";
-  return normalizeWord(first);
+  return getNthWord(text, "first");
+}
+
+export type WordKind = "first" | "second" | "third" | "last";
+
+export const WORD_KIND_LABEL: Record<WordKind, string> = {
+  first: "first", second: "second", third: "third", last: "last",
+};
+
+export function getNthWord(text: string, kind: WordKind): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "";
+  switch (kind) {
+    case "first":  return normalizeWord(words[0]);
+    case "second": return normalizeWord(words[1] ?? "");
+    case "third":  return normalizeWord(words[2] ?? "");
+    case "last":   return normalizeWord(words[words.length - 1]);
+  }
+}
+
+// Pick a verse and a question variant for the recall prompt.
+// Bias toward "second" and "last" so it's unpredictable, but only choose
+// a variant the verse can actually answer (e.g. no "third" if it has 2 words).
+export function pickRecall(verses: BibleVerse[]): { verse: number; word_kind: WordKind } | null {
+  if (verses.length === 0) return null;
+  const v = verses[Math.floor(Math.random() * verses.length)];
+  const words = v.text.trim().split(/\s+/).filter(Boolean);
+  const allowed: WordKind[] = ["first", "last"];
+  if (words.length >= 2) allowed.push("second");
+  if (words.length >= 3) allowed.push("third");
+  const word_kind = allowed[Math.floor(Math.random() * allowed.length)];
+  return { verse: v.verse, word_kind };
 }
 
 // Suggested minimum dwell time to read the chapter — slow attentive read.

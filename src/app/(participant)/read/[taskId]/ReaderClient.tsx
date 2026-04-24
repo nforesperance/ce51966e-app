@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import LongPressButton from "@/components/LongPressButton";
 
 type Verse = { verse: number; text: string };
+type WordKind = "first" | "second" | "third" | "last";
+
+const WORD_KIND_LABEL: Record<WordKind, string> = {
+  first: "first", second: "second", third: "third", last: "last",
+};
 
 export default function ReaderClient({
   taskId, chapter, translation, nextChapter,
@@ -20,6 +25,7 @@ export default function ReaderClient({
   const [verses, setVerses] = useState<Verse[]>([]);
   const [minSec, setMinSec] = useState<number>(60);
   const [recallVerse, setRecallVerse] = useState<number | null>(null);
+  const [recallWordKind, setRecallWordKind] = useState<WordKind>("first");
   const [elapsed, setElapsed] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [recall, setRecall] = useState("");
@@ -41,6 +47,7 @@ export default function ReaderClient({
         setVerses(j.verses ?? []);
         setMinSec(j.min_dwell_seconds ?? 60);
         setRecallVerse(j.recall_verse ?? null);
+        setRecallWordKind((j.recall_word_kind as WordKind) ?? "first");
         startRef.current = Date.now();
       } catch (e) {
         if (!abort) setErr(e instanceof Error ? e.message : String(e));
@@ -92,6 +99,7 @@ export default function ReaderClient({
           reflection: reflection.trim(),
           dwell_seconds: Math.floor(elapsed),
           recall_verse: recallVerse,
+          recall_word_kind: recallWordKind,
           recall_answer: recall.trim(),
         }),
       });
@@ -139,7 +147,7 @@ export default function ReaderClient({
 
         <div>
           <label className="label block mb-1">
-            Type the first word of verse {recallVerse ?? "—"}
+            Type the {WORD_KIND_LABEL[recallWordKind]} word of verse {recallVerse ?? "—"}
           </label>
           <input
             className="input text-sm"

@@ -3,13 +3,14 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadActionableTaskForUser } from "@/lib/tasks";
-import { fetchChapter, firstWord, minDwellSeconds, normalizeWord } from "@/lib/bibleApi";
+import { fetchChapter, getNthWord, minDwellSeconds, normalizeWord, WORD_KIND_LABEL } from "@/lib/bibleApi";
 
 const Body = z.object({
   chapter: z.string().min(1).max(200),
   reflection: z.string().max(2000).optional().default(""),
   dwell_seconds: z.number().int().min(0).max(36000),
   recall_verse: z.number().int().min(1),
+  recall_word_kind: z.enum(["first", "second", "third", "last"]).default("first"),
   recall_answer: z.string().min(1).max(80),
 });
 
@@ -51,16 +52,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
     );
   }
 
-  // Validate recall: the first word (normalized) of the specified verse.
+  // Validate recall against the chosen word position in the chosen verse.
   const target = ch.verses.find((v) => v.verse === parsed.data.recall_verse);
   if (!target) {
     return NextResponse.json({ error: "Verse number not found" }, { status: 400 });
   }
-  const expected = firstWord(target.text);
+  const expected = getNthWord(target.text, parsed.data.recall_word_kind);
   const provided = normalizeWord(parsed.data.recall_answer);
-  if (expected !== provided) {
+  if (!expected || expected !== provided) {
     return NextResponse.json(
-      { error: `Not quite — check verse ${parsed.data.recall_verse} again.` },
+      {
+        error: `Not quite — check the ${WORD_KIND_LABEL[parsed.data.recall_word_kind]} word of verse ${parsed.data.recall_verse}.`,
+      },
       { status: 400 }
     );
   }

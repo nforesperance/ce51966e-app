@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
-import { fetchChapter, minDwellSeconds } from "@/lib/bibleApi";
+import { fetchChapter, minDwellSeconds, pickRecall } from "@/lib/bibleApi";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();
@@ -12,19 +12,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const ch = await fetchChapter(ref, translation);
-    // Pick a random verse for the recall prompt. Deterministic per request so
-    // the client can echo it back without re-randomizing.
-    const totalVerses = ch.verses.length;
-    const recallVerse = totalVerses > 0
-      ? ch.verses[Math.floor(Math.random() * totalVerses)].verse
-      : null;
+    const recall = pickRecall(ch.verses);
     return NextResponse.json({
       reference: ch.reference,
       translation: ch.translation,
       verses: ch.verses,
       word_count: ch.word_count,
       min_dwell_seconds: minDwellSeconds(ch.word_count),
-      recall_verse: recallVerse,
+      recall_verse: recall?.verse ?? null,
+      recall_word_kind: recall?.word_kind ?? null,
     });
   } catch (e) {
     return NextResponse.json(
