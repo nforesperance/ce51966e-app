@@ -6,9 +6,9 @@ import { TextStyle, Color, FontSize } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import {
   Bold, Italic, List, ListOrdered, Quote, Heading2, Undo2, Redo2,
-  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify, Minus, Plus,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Editor({
   value, onChange,
@@ -57,7 +57,7 @@ export default function Editor({
     return () => { editor.off("selectionUpdate", capture); };
   }, [editor]);
 
-  const sizeInput = useRef<HTMLInputElement | null>(null);
+  const [size, setSize] = useState<number>(14);
 
   if (!editor) return null;
 
@@ -86,16 +86,15 @@ export default function Editor({
     </button>
   );
 
-  function applyFontSize() {
-    const raw = sizeInput.current?.value?.trim();
-    if (!raw) return;
-    const num = parseInt(raw, 10);
-    if (!num || num < 6 || num > 96) return;
+  function applyFontSize(px: number) {
+    const num = Math.max(6, Math.min(96, Math.round(px)));
+    setSize(num);
     withSelection(() => {
       (editor!.chain() as unknown as { setFontSize: (v: string) => { run: () => void } })
         .setFontSize(`${num}px`).run();
     });
   }
+  function bumpSize(delta: number) { applyFontSize(size + delta); }
 
   function applyColor(c: string) {
     withSelection(() => { editor!.chain().setColor(c).run(); });
@@ -124,21 +123,28 @@ export default function Editor({
 
         <span className="mx-1 h-4 w-px bg-[color:var(--border)]" />
 
-        <div className="flex items-center gap-1 text-xs text-fg-muted">
-          <span>Size</span>
-          <input
-            ref={sizeInput}
-            type="number" min={6} max={96} placeholder="14"
-            defaultValue={14}
+        <div className="flex items-center gap-0.5 text-xs text-fg-muted">
+          <span className="mr-1">Size</span>
+          <button type="button"
             onMouseDown={noFocusSteal}
-            className="w-12 text-center bg-transparent border border-[color:var(--border)] rounded px-1 py-0.5 text-fg"
+            onClick={() => bumpSize(-1)}
+            className="p-1 rounded hover:bg-white/5 text-fg-muted active:scale-95"
+            title="Smaller"><Minus size={14} /></button>
+          <input
+            type="number" min={6} max={96}
+            value={size}
+            onMouseDown={noFocusSteal}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10);
+              if (!Number.isNaN(n)) applyFontSize(n);
+            }}
+            className="w-10 text-center bg-transparent border border-[color:var(--border)] rounded px-1 py-0.5 text-fg tabular-nums"
           />
           <button type="button"
             onMouseDown={noFocusSteal}
-            onClick={applyFontSize}
-            className="px-2 py-0.5 bg-gold text-[color:#111a3a] rounded text-[11px] font-semibold">
-            Apply
-          </button>
+            onClick={() => bumpSize(+1)}
+            className="p-1 rounded hover:bg-white/5 text-fg-muted active:scale-95"
+            title="Larger"><Plus size={14} /></button>
         </div>
 
         <span className="mx-1 h-4 w-px bg-[color:var(--border)]" />
