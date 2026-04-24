@@ -160,13 +160,13 @@ export default function ReaderClient({
         </div>
 
         <div>
-          <label className="label block mb-1">In one sentence — what stood out?</label>
+          <label className="label block mb-1">In one sentence — what did you learn?</label>
           <textarea
             rows={3}
             className="input text-sm"
             value={reflection}
             onChange={(e) => setReflection(e.target.value)}
-            placeholder="A verse, an idea, something to pray about…"
+            placeholder="What did you learn, an idea, something to pray about…"
           />
         </div>
 
