@@ -70,8 +70,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
   const { data: existing } = await sb.from("task_completions")
     .select("id, chapter_states").eq("task_id", taskId).eq("user_id", user.id).maybeSingle();
 
+  const now = new Date().toISOString();
   const entry = {
-    read_at: new Date().toISOString(),
+    read_at: now,
     dwell_seconds: parsed.data.dwell_seconds,
     recall_verse: parsed.data.recall_verse,
     reflection: parsed.data.reflection.trim() || null,
@@ -79,17 +80,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
   };
   const nextStates = { ...(existing?.chapter_states ?? {}), [parsed.data.chapter]: entry };
 
+  // Auto-complete the task once every chapter has been verified.
+  const doneChapters = Object.keys(nextStates);
+  const allDone = chapters.every((c) => doneChapters.includes(c));
+  const completionPatch: Record<string, unknown> = { chapter_states: nextStates };
+  if (allDone) {
+    completionPatch.completed_at = now;
+    completionPatch.marked_complete_at = now;
+    completionPatch.points_awarded = task.max_points ?? 100;
+  }
+
   if (existing) {
     const { error } = await sb.from("task_completions")
-      .update({ chapter_states: nextStates }).eq("id", existing.id);
+      .update(completionPatch).eq("id", existing.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   } else {
     const { error } = await sb.from("task_completions")
-      .insert({ task_id: taskId, user_id: user.id, chapter_states: nextStates });
+      .insert({ task_id: taskId, user_id: user.id, ...completionPatch });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const doneChapters = Object.keys(nextStates);
-  const allDone = chapters.every((c) => doneChapters.includes(c));
   return NextResponse.json({ ok: true, chapter_states: nextStates, all_chapters_done: allDone });
 }

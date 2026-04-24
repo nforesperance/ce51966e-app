@@ -49,6 +49,11 @@ export default function LongPressButton({
 
   function begin() {
     if (disabled || holding) return;
+    // Dismiss any open mobile keyboard so it doesn't cover the button.
+    if (typeof document !== "undefined") {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) el.blur();
+    }
     fired.current = false;
     start.current = performance.now();
     setHolding(true);

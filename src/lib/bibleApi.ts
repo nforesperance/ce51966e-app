@@ -43,9 +43,16 @@ export async function fetchChapter(reference: string, translation: string): Prom
   };
 }
 
-// Normalize a word for the recall check: lowercase, strip leading/trailing punctuation.
+// Normalize a word for the recall check.
+// Lowercase, strip diacritics, drop ALL non-letter/digit characters.
+// "Blessed!" / "blessed" / "  Blessed  " / "BLÉSSÉD" all collapse to "blessed".
 export function normalizeWord(w: string) {
-  return w.toLowerCase().replace(/^[^a-z0-9'’]+|[^a-z0-9'’]+$/g, "");
+  return w
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")     // strip combining diacritics
+    .replace(/[‘’‚‛]/g, "'") // curly → straight apostrophe
+    .replace(/[^a-z0-9]/g, "");          // drop everything else
 }
 
 export function firstWord(text: string): string {

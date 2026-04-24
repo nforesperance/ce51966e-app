@@ -181,26 +181,10 @@ function PrayerControl({ task, onChange }: { task: UITask; onChange: (t: UITask)
   );
 }
 
-function ReadingControl({ task, onChange }: { task: UITask; onChange: (t: UITask) => void }) {
+function ReadingControl({ task }: { task: UITask; onChange: (t: UITask) => void }) {
   const completed = !!task.completion?.completed_at;
   const states = task.chapter_states ?? {};
-  const [busy, setBusy] = useState(false);
   const doneChapters = task.chapters.filter((c) => !!states[c]?.read_at);
-  const allDone = task.chapters.length > 0 && doneChapters.length === task.chapters.length;
-  const remaining = task.chapters.length - doneChapters.length;
-
-  async function complete() {
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/tasks/${task.id}/complete`, { method: "POST" });
-      const j = await res.json();
-      if (!res.ok) { alert(j.error ?? "Failed"); return; }
-      onChange({ ...task, completion: {
-        first_started_at: null, started_at: null, elapsed_seconds: 0,
-        completed_at: j.completion.completed_at, points_awarded: j.completion.points_awarded,
-      } });
-    } finally { setBusy(false); }
-  }
 
   if (completed) {
     return (
@@ -210,42 +194,34 @@ function ReadingControl({ task, onChange }: { task: UITask; onChange: (t: UITask
     );
   }
 
-  return (
-    <div>
-      {task.chapters.length === 0 ? (
-        <p className="text-xs text-fg-muted mb-3">No chapters listed.</p>
-      ) : (
-        <div className="space-y-1.5 mb-3">
-          {task.chapters.map((c) => {
-            const done = !!states[c]?.read_at;
-            return done ? (
-              <div key={c} className="flex items-center justify-between px-3 py-2 rounded-lg border border-[color:var(--border)] text-sm">
-                <span className="flex items-center gap-2 text-fg-muted">
-                  <span className="h-5 w-5 rounded-full border border-[color:var(--ok)] text-[color:var(--ok)] grid place-items-center">
-                    <Check size={12} />
-                  </span>
-                  <span className="line-through">{c}</span>
-                </span>
-              </div>
-            ) : (
-              <Link key={c} href={`/read/${task.id}?ch=${encodeURIComponent(c)}`}
-                className="flex items-center justify-between px-3 py-2 rounded-lg border border-[color:var(--border)] text-sm hover:border-[color:var(--gold)] active:scale-[0.99] transition-[transform]">
-                <span className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded-full border border-[color:var(--border)] grid place-items-center text-fg-muted text-[10px]"></span>
-                  <span>{c}</span>
-                </span>
-                <ChevronRight size={14} className="text-fg-muted" />
-              </Link>
-            );
-          })}
-        </div>
-      )}
+  if (task.chapters.length === 0) {
+    return <p className="text-xs text-fg-muted">No chapters listed.</p>;
+  }
 
-      {!completed && (
-        <button onClick={complete} disabled={busy || !allDone} className="btn-gold text-sm flex items-center gap-2">
-          <Check size={14} /> {busy ? "Saving…" : allDone ? "Mark task complete" : `Read ${remaining} more`}
-        </button>
-      )}
+  return (
+    <div className="space-y-1.5">
+      {task.chapters.map((c) => {
+        const done = !!states[c]?.read_at;
+        return done ? (
+          <div key={c} className="flex items-center justify-between px-3 py-2 rounded-lg border border-[color:var(--border)] text-sm">
+            <span className="flex items-center gap-2 text-fg-muted">
+              <span className="h-5 w-5 rounded-full border border-[color:var(--ok)] text-[color:var(--ok)] grid place-items-center">
+                <Check size={12} />
+              </span>
+              <span className="line-through">{c}</span>
+            </span>
+          </div>
+        ) : (
+          <Link key={c} href={`/read/${task.id}?ch=${encodeURIComponent(c)}`}
+            className="flex items-center justify-between px-3 py-2 rounded-lg border border-[color:var(--border)] text-sm hover:border-[color:var(--gold)] active:scale-[0.99] transition-[transform]">
+            <span className="flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full border border-[color:var(--border)] grid place-items-center text-fg-muted text-[10px]"></span>
+              <span>{c}</span>
+            </span>
+            <ChevronRight size={14} className="text-fg-muted" />
+          </Link>
+        );
+      })}
     </div>
   );
 }
