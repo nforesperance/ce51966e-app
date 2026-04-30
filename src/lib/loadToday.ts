@@ -67,10 +67,80 @@ export async function loadToday(
   return { ...pick, availablePrograms };
 }
 
+// Build a locked-preview TodayData for a single day (used for unstarted programs).
+async function buildPreviewOnly(
+  p: Program,
+  day: { id: string; day_number: number; date: string },
+  effectiveStart: Date,
+): Promise<TodayData> {
+  const sb = supabaseAdmin();
+  const { data: pp } = await sb
+    .from("prayer_points")
+    .select("title, body_markdown, image_url, card_config, scriptures(reference, text, position)")
+    .eq("program_day_id", day.id).maybeSingle();
+  const { data: tasks } = await sb.from("tasks")
+    .select("id, type, title, duration_minutes, target_start_time, max_points, metadata, translation, position")
+    .eq("program_day_id", day.id).order("position");
+
+  // Need at least something to show.
+  if (!pp && (tasks ?? []).length === 0) return null;
+
+  const scriptures = ((pp?.scriptures ?? []) as { reference: string; text: string | null; position: number }[])
+    .sort((a, b) => a.position - b.position);
+
+  const uiTasks: UITask[] = (tasks ?? []).map((t) => ({
+    id: t.id, type: t.type, title: t.title,
+    duration_minutes: t.duration_minutes,
+    target_start_time: t.target_start_time,
+    max_points: t.max_points,
+    chapters: (t.metadata?.chapters as string[] | undefined) ?? [],
+    translation: ((t as unknown as { translation?: string }).translation ?? "kjv") as "kjv" | "web",
+    chapter_states: {},
+    completion: null,
+  }));
+
+  return {
+    program: {
+      id: p.id, name: p.name, timezone: p.timezone,
+      next_day_preview_hours: p.next_day_preview_hours,
+      day_unlock_offset_minutes: p.day_unlock_offset_minutes ?? 0,
+      card_defaults: (p.card_defaults ?? {}) as Record<string, unknown>,
+    },
+    day,
+    prayerPoint: pp ? {
+      title: pp.title, body_markdown: pp.body_markdown, image_url: pp.image_url,
+      card_config: (pp.card_config ?? {}) as Record<string, unknown>,
+      scriptures: scriptures.map((s) => ({ reference: s.reference, text: s.text })),
+    } : null,
+    tasks: uiTasks,
+    locked: true,
+    lockedUntilIso: effectiveStart.toISOString(),
+    allTodayDone: false,
+    availablePrograms: [],
+  };
+}
+
 async function loadForProgram(p: Program, userId: string): Promise<TodayData> {
   const sb = supabaseAdmin();
   const today = effectiveProgramDate(p.timezone, p.day_unlock_offset_minutes ?? 0);
-  if (today < p.start_date || today > p.end_date) return null;
+
+  // Program already finished — skip.
+  if (today > p.end_date) return null;
+
+  // Program hasn't started yet. If we're inside the preview window of day 1's
+  // start, render day 1 as a locked preview so participants can peek.
+  if (today < p.start_date) {
+    if (p.next_day_preview_hours <= 0) return null;
+    const { data: day1 } = await sb.from("program_days")
+      .select("id, day_number, date")
+      .eq("program_id", p.id).eq("day_number", 1).maybeSingle();
+    if (!day1) return null;
+    const rawStart = zonedToUtc(day1.date, "00:00", p.timezone);
+    const effectiveStart = new Date(rawStart.getTime() - (p.day_unlock_offset_minutes ?? 0) * 60_000);
+    const hoursUntil = (effectiveStart.getTime() - Date.now()) / 3_600_000;
+    if (hoursUntil <= 0 || hoursUntil > p.next_day_preview_hours) return null;
+    return await buildPreviewOnly(p, day1, effectiveStart);
+  }
 
   const { data: currentDay } = await sb.from("program_days")
     .select("id, day_number, date").eq("program_id", p.id).eq("date", today).maybeSingle();
