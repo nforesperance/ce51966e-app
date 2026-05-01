@@ -67,11 +67,11 @@ export default async function TodayPage() {
         </div>
       ) : null}
 
-      <div className="text-center mt-6">
+      {/* <div className="text-center mt-6">
         <Link href="/tasks" className="btn-gold text-sm">
           {locked ? "See upcoming tasks" : "Go to today's tasks"}
         </Link>
-      </div>
+      </div> */}
 
       <BottomNav active="today" programId={program.id} />
     </div>
