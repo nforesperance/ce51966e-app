@@ -4,7 +4,7 @@ export const TASK_DEFAULTS = {
   maxPoints: 100,
   prayer: {
     title: "Midnight prayer",
-    durationMinutes: 30,
+    durationMinutes: 45,
     targetStartTime: "00:00",
     fullMarksWindowMinutes: 5,
     zeroMarksWindowMinutes: 120,
