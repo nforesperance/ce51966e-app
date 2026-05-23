@@ -1,3 +1,4 @@
+import { TASK_DEFAULTS } from "@/lib/appDefaults";
 import { zonedToUtc, minutesBetween } from "@/lib/time";
 
 export type PrayerTaskParams = {
@@ -30,16 +31,16 @@ export function scorePrayer({
   completedAt: Date;
   elapsedSeconds: number;
 }): number {
-  const max = task.max_points ?? 100;
+  const max = task.max_points ?? TASK_DEFAULTS.maxPoints;
   const durMin = task.duration_minutes ?? 0;
 
   if (durMin > 0 && elapsedSeconds < durMin * 60 * 0.9) return 0;
   if (!task.target_start_time || !durMin) return max;
 
-  const fullStart = task.full_marks_window_minutes ?? 5;
-  const zeroStart = task.zero_marks_window_minutes ?? 120;
-  const fullEnd = task.full_marks_end_window_minutes ?? 5;
-  const zeroEnd = task.zero_marks_end_window_minutes ?? 120;
+  const fullStart = task.full_marks_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksWindowMinutes;
+  const zeroStart = task.zero_marks_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksWindowMinutes;
+  const fullEnd = task.full_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksEndWindowMinutes;
+  const zeroEnd = task.zero_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksEndWindowMinutes;
 
   const targetStart = zonedToUtc(programDate, task.target_start_time, programTimezone);
   const targetEnd = new Date(targetStart.getTime() + durMin * 60_000);

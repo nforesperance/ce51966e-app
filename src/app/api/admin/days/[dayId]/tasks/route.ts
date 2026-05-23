@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
+import { TASK_DEFAULTS } from "@/lib/appDefaults";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const TaskBody = z.object({
@@ -38,13 +39,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ dayId: str
     program_day_id: dayId,
     type: parsed.data.type,
     title: parsed.data.title,
-    duration_minutes: parsed.data.duration_minutes ?? null,
-    target_start_time: parsed.data.target_start_time ?? null,
-    full_marks_window_minutes: parsed.data.full_marks_window_minutes ?? 5,
-    zero_marks_window_minutes: parsed.data.zero_marks_window_minutes ?? 120,
-    full_marks_end_window_minutes: parsed.data.full_marks_end_window_minutes ?? 5,
-    zero_marks_end_window_minutes: parsed.data.zero_marks_end_window_minutes ?? 120,
-    max_points: parsed.data.max_points ?? 100,
+    duration_minutes: parsed.data.duration_minutes ?? (parsed.data.type === "prayer" ? TASK_DEFAULTS.prayer.durationMinutes : null),
+    target_start_time: parsed.data.target_start_time ?? (parsed.data.type === "prayer" ? TASK_DEFAULTS.prayer.targetStartTime : null),
+    full_marks_window_minutes: parsed.data.full_marks_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksWindowMinutes,
+    zero_marks_window_minutes: parsed.data.zero_marks_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksWindowMinutes,
+    full_marks_end_window_minutes: parsed.data.full_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksEndWindowMinutes,
+    zero_marks_end_window_minutes: parsed.data.zero_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksEndWindowMinutes,
+    max_points: parsed.data.max_points ?? TASK_DEFAULTS.maxPoints,
     metadata: parsed.data.metadata ?? {},
     translation: parsed.data.translation ?? "kjv",
     position,

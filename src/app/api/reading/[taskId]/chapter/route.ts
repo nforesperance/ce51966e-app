@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
+import { TASK_DEFAULTS } from "@/lib/appDefaults";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadActionableTaskForUser } from "@/lib/tasks";
 import { fetchChapter, getNthWord, minDwellSeconds, normalizeWord, WORD_KIND_LABEL } from "@/lib/bibleApi";
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
   if (allDone) {
     completionPatch.completed_at = now;
     completionPatch.marked_complete_at = now;
-    completionPatch.points_awarded = task.max_points ?? 100;
+    completionPatch.points_awarded = task.max_points ?? TASK_DEFAULTS.maxPoints;
   }
 
   if (existing) {

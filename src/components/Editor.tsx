@@ -7,8 +7,12 @@ import TextAlign from "@tiptap/extension-text-align";
 import {
   Bold, Italic, List, ListOrdered, Quote, Heading2, Undo2, Redo2,
   AlignLeft, AlignCenter, AlignRight, AlignJustify, Minus, Plus,
+  Palette,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+const DEFAULT_COLORS = ["#f0e6d2", "#d4af37", "#ffffff", "#c8bfa0", "#ff6b81", "#6ecf8e", "#4dd0e1"];
+const FALLBACK_COLOR = DEFAULT_COLORS[1];
 
 export default function Editor({
   value, onChange,
@@ -43,18 +47,24 @@ export default function Editor({
   // with a control outside the editor (number input, color picker).
   const savedFrom = useRef<number | null>(null);
   const savedTo = useRef<number | null>(null);
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [recentColors, setRecentColors] = useState<string[]>(DEFAULT_COLORS);
 
   useEffect(() => {
     if (!editor) return;
     const capture = () => {
       const { from, to } = editor.state.selection;
-      if (from !== to) {
-        savedFrom.current = from;
-        savedTo.current = to;
-      }
+      savedFrom.current = from;
+      savedTo.current = to;
+      setActiveColor(normalizeHexColor(editor.getAttributes("textStyle").color));
     };
     editor.on("selectionUpdate", capture);
-    return () => { editor.off("selectionUpdate", capture); };
+    editor.on("transaction", capture);
+    capture();
+    return () => {
+      editor.off("selectionUpdate", capture);
+      editor.off("transaction", capture);
+    };
   }, [editor]);
 
   const [size, setSize] = useState<number>(14);
@@ -97,12 +107,18 @@ export default function Editor({
   function bumpSize(delta: number) { applyFontSize(size + delta); }
 
   function applyColor(c: string) {
-    withSelection(() => { editor!.chain().setColor(c).run(); });
+    const color = normalizeHexColor(c) ?? FALLBACK_COLOR;
+    setActiveColor(color);
+    setRecentColors((colors) => [color, ...colors.filter((item) => item.toLowerCase() !== color.toLowerCase())].slice(0, 7));
+    withSelection(() => { editor!.chain().setColor(color).run(); });
   }
 
   function resetColor() {
+    setActiveColor(null);
     withSelection(() => { editor!.chain().unsetColor().run(); });
   }
+
+  const colorPickerValue = activeColor ?? recentColors[0] ?? FALLBACK_COLOR;
 
   return (
     <div className="border border-[color:var(--border)] rounded-xl overflow-hidden bg-white/5">
@@ -151,12 +167,47 @@ export default function Editor({
 
         <div className="flex items-center gap-1 text-xs text-fg-muted">
           <span>Color</span>
-          <input
-            type="color"
+          <button
+            type="button"
+            title={activeColor ? `Reuse ${activeColor}` : "Reuse recent color"}
             onMouseDown={noFocusSteal}
-            onChange={(e) => applyColor(e.target.value)}
-            className="h-6 w-6 rounded cursor-pointer border border-[color:var(--border)] bg-transparent p-0"
-          />
+            onClick={() => applyColor(colorPickerValue)}
+            className="h-7 w-7 rounded border border-[color:var(--border)] grid place-items-center hover:border-[color:var(--gold)]"
+          >
+            <span className="h-4 w-4 rounded-sm border border-black/30" style={{ backgroundColor: colorPickerValue }} />
+          </button>
+          <div className="flex items-center gap-0.5">
+            {recentColors.slice(0, 5).map((color) => (
+              <button
+                key={color}
+                type="button"
+                title={`Apply ${color}`}
+                onMouseDown={noFocusSteal}
+                onClick={() => applyColor(color)}
+                className={`h-6 w-6 rounded border p-0.5 hover:border-[color:var(--gold)] ${
+                  activeColor?.toLowerCase() === color.toLowerCase()
+                    ? "border-[color:var(--gold)]"
+                    : "border-[color:var(--border)]"
+                }`}
+              >
+                <span className="block h-full w-full rounded-sm border border-black/30" style={{ backgroundColor: color }} />
+              </button>
+            ))}
+          </div>
+          <label
+            title="Choose another color"
+            onMouseDown={noFocusSteal}
+            className="h-7 px-2 rounded border border-[color:var(--border)] hover:border-[color:var(--gold)] cursor-pointer inline-flex items-center gap-1 text-fg-muted"
+          >
+            <Palette size={14} />
+            <span>More</span>
+            <input
+              type="color"
+              value={colorPickerValue}
+              onChange={(e) => applyColor(e.target.value)}
+              className="sr-only"
+            />
+          </label>
           <button type="button"
             onMouseDown={noFocusSteal}
             onClick={resetColor}
@@ -173,4 +224,20 @@ export default function Editor({
       <EditorContent editor={editor} />
     </div>
   );
+}
+
+function normalizeHexColor(color: unknown) {
+  if (typeof color !== "string") return null;
+  const value = color.trim();
+  const shortHex = /^#([0-9a-f]{3})$/i.exec(value);
+  if (shortHex) {
+    return `#${shortHex[1].split("").map((ch) => ch + ch).join("")}`.toLowerCase();
+  }
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
+  const rgb = /^rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})/i.exec(value);
+  if (!rgb) return null;
+  return `#${rgb.slice(1, 4).map((part) => {
+    const n = Math.max(0, Math.min(255, parseInt(part, 10)));
+    return n.toString(16).padStart(2, "0");
+  }).join("")}`;
 }

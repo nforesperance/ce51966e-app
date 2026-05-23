@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, BookOpen, ListChecks, Check, Minus, Plus, Trash2, MoreHorizontal, X, Gift } from "lucide-react";
+import { TASK_DEFAULTS } from "@/lib/appDefaults";
 
 type Task = {
   id: string;
@@ -251,7 +252,7 @@ function OverrideDialog({ task, onClose, onApply }: {
   onClose: () => void;
   onApply: (t: Task, action: "full" | "custom" | "clear", points?: number, reason?: string) => void;
 }) {
-  const [points, setPoints] = useState((task.max_points ?? 100).toString());
+  const [points, setPoints] = useState((task.max_points ?? TASK_DEFAULTS.maxPoints).toString());
   const [reason, setReason] = useState("");
   return (
     <Modal title={task.title} onClose={onClose}>

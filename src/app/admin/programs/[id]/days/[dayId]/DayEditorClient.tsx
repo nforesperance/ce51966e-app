@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, ImageIcon, X, Save, Check, Clock, BookOpen, ListChecks } from "lucide-react";
 import Editor from "@/components/Editor";
 import CardBuilder from "@/components/CardBuilder";
+import { TASK_DEFAULTS } from "@/lib/appDefaults";
 import type { CardConfig } from "@/components/CardPreview";
 
 type Scripture = { reference: string; text: string };
@@ -259,18 +260,38 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
 }) {
   const isNew = !task;
   const [type, setType] = useState<Task["type"]>(task?.type ?? "prayer");
-  const [title, setTitle] = useState(task?.title ?? "");
-  const [duration, setDuration] = useState<string>(task?.duration_minutes?.toString() ?? "30");
-  const [start, setStart] = useState<string>(task?.target_start_time?.slice(0, 5) ?? "00:00");
-  const [fullWin, setFullWin] = useState<string>((task?.full_marks_window_minutes ?? 5).toString());
-  const [zeroWin, setZeroWin] = useState<string>((task?.zero_marks_window_minutes ?? 120).toString());
-  const [fullEndWin, setFullEndWin] = useState<string>((task?.full_marks_end_window_minutes ?? 5).toString());
-  const [zeroEndWin, setZeroEndWin] = useState<string>((task?.zero_marks_end_window_minutes ?? 120).toString());
-  const [maxPts, setMaxPts] = useState<string>((task?.max_points ?? 100).toString());
+  const [title, setTitle] = useState(task?.title ?? TASK_DEFAULTS.prayer.title);
+  const [duration, setDuration] = useState<string>((task?.duration_minutes ?? TASK_DEFAULTS.prayer.durationMinutes).toString());
+  const [start, setStart] = useState<string>(task?.target_start_time?.slice(0, 5) ?? TASK_DEFAULTS.prayer.targetStartTime);
+  const [fullWin, setFullWin] = useState<string>((task?.full_marks_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksWindowMinutes).toString());
+  const [zeroWin, setZeroWin] = useState<string>((task?.zero_marks_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksWindowMinutes).toString());
+  const [fullEndWin, setFullEndWin] = useState<string>((task?.full_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksEndWindowMinutes).toString());
+  const [zeroEndWin, setZeroEndWin] = useState<string>((task?.zero_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksEndWindowMinutes).toString());
+  const [maxPts, setMaxPts] = useState<string>((task?.max_points ?? TASK_DEFAULTS.maxPoints).toString());
   const initChapters = (task?.metadata?.chapters as string[] | undefined) ?? [];
   const [chapters, setChapters] = useState<string>(initChapters.join(", "));
   const [translation, setTranslation] = useState<"kjv" | "web">(task?.translation ?? "kjv");
   const [busy, setBusy] = useState(false);
+
+  function titleForType(t: Task["type"]) {
+    if (t === "prayer") return TASK_DEFAULTS.prayer.title;
+    if (t === "reading") return TASK_DEFAULTS.reading.title;
+    return "";
+  }
+
+  function selectType(t: Task["type"]) {
+    setType(t);
+    if (!isNew) return;
+    setTitle(titleForType(t));
+    if (t === "prayer") {
+      setDuration(TASK_DEFAULTS.prayer.durationMinutes.toString());
+      setStart(TASK_DEFAULTS.prayer.targetStartTime);
+      setFullWin(TASK_DEFAULTS.prayer.fullMarksWindowMinutes.toString());
+      setZeroWin(TASK_DEFAULTS.prayer.zeroMarksWindowMinutes.toString());
+      setFullEndWin(TASK_DEFAULTS.prayer.fullMarksEndWindowMinutes.toString());
+      setZeroEndWin(TASK_DEFAULTS.prayer.zeroMarksEndWindowMinutes.toString());
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -278,7 +299,7 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
     try {
       const body: Record<string, unknown> = {
         title,
-        max_points: parseInt(maxPts, 10) || 100,
+        max_points: parseInt(maxPts, 10) || TASK_DEFAULTS.maxPoints,
       };
       if (type === "prayer") {
         body.duration_minutes = parseInt(duration, 10) || null;
@@ -324,7 +345,7 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
               <label className="label block mb-1">Type</label>
               <div className="grid grid-cols-3 gap-2">
                 {(["prayer", "reading", "other"] as const).map((t) => (
-                  <button key={t} type="button" onClick={() => setType(t)}
+                  <button key={t} type="button" onClick={() => selectType(t)}
                     className={`btn-ghost text-sm capitalize ${type === t ? "border-[color:var(--gold)] text-gold" : ""}`}>
                     {t}
                   </button>
@@ -335,7 +356,7 @@ function TaskDialog({ dayId, task, onClose, onSaved }: {
           <div>
             <label className="label block mb-1">Title</label>
             <input required className="input" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder={type === "prayer" ? "Midnight prayer (30 min)" : type === "reading" ? "Psalms reading" : "Journal entry"} />
+              placeholder={type === "prayer" ? TASK_DEFAULTS.prayer.title : type === "reading" ? TASK_DEFAULTS.reading.title : "Journal entry"} />
           </div>
 
           {type === "prayer" && (

@@ -1,6 +1,7 @@
 // Reading / other tasks only. Prayer uses /action.
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { TASK_DEFAULTS } from "@/lib/appDefaults";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadActionableTaskForUser } from "@/lib/tasks";
 
@@ -38,7 +39,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ taskId: s
     task_id: taskId, user_id: user.id,
     completed_at: now.toISOString(),
     marked_complete_at: now.toISOString(),
-    points_awarded: task.max_points ?? 100,
+    points_awarded: task.max_points ?? TASK_DEFAULTS.maxPoints,
   };
   if (existing) {
     const { data: up, error } = await sb.from("task_completions")

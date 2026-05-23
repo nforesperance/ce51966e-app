@@ -1,4 +1,5 @@
 import "server-only";
+import { READING_WORDS_PER_MINUTE } from "@/lib/appDefaults";
 
 // Uses https://bible-api.com — free, no key. Supported translations we expose:
 // 'kjv' (King James), 'web' (World English Bible).
@@ -91,8 +92,7 @@ export function pickRecall(verses: BibleVerse[]): { verse: number; word_kind: Wo
 }
 
 // Suggested minimum dwell time to read the chapter — slow attentive read.
-const WORDS_PER_MINUTE = 150;
 export function minDwellSeconds(wordCount: number): number {
-  const est = Math.ceil((wordCount / WORDS_PER_MINUTE) * 60);
+  const est = Math.ceil((wordCount / READING_WORDS_PER_MINUTE) * 60);
   return Math.max(30, Math.min(est, 600)); // bounded [30s, 10m]
 }

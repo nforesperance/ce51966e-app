@@ -178,6 +178,6 @@ input[type="datetime-local"].input {
   color: var(--fg-muted);
   font-style: italic;
 }
-.prose-prayer strong { color: var(--gold-soft); }
-.prose-prayer em { color: var(--gold-soft); font-style: italic; }
+.prose-prayer strong { color: inherit; font-weight: 700; }
+.prose-prayer em { color: inherit; font-style: italic; }
 .prose-prayer a { color: var(--gold); text-decoration: underline; word-break: break-all; }
