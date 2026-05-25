@@ -1,18 +1,62 @@
 "use client";
 
 import { useEditor, EditorContent } from "@tiptap/react";
+import { Mark, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { TextStyle, Color, FontSize } from "@tiptap/extension-text-style";
+import { TextStyle, Color } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
+import Link from "@tiptap/extension-link";
+import Underline from "@tiptap/extension-underline";
 import {
-  Bold, Italic, List, ListOrdered, Quote, Heading2, Undo2, Redo2,
-  AlignLeft, AlignCenter, AlignRight, AlignJustify, Minus, Plus,
+  AlignCenter,
+  AlignLeft,
+  BookOpen,
+  Bold,
+  Eraser,
+  Heading1,
+  Heading2,
+  Heading3,
+  Highlighter,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Minus,
   Palette,
+  Quote,
+  Redo2,
+  RemoveFormatting,
+  Strikethrough,
+  Underline as UnderlineIcon,
+  Undo2,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const DEFAULT_COLORS = ["#f0e6d2", "#d4af37", "#ffffff", "#c8bfa0", "#ff6b81", "#6ecf8e", "#4dd0e1"];
-const FALLBACK_COLOR = DEFAULT_COLORS[1];
+const DEFAULT_TEXT_COLOR = "#f0e6d2";
+const DEFAULT_HIGHLIGHT_COLOR = "#fef08a";
+
+const HighlightMark = Mark.create({
+  name: "highlight",
+
+  addAttributes() {
+    return {
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("style"),
+        renderHTML: (attributes) => attributes.style ? { style: attributes.style } : {},
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "mark" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["mark", mergeAttributes(HTMLAttributes), 0];
+  },
+});
 
 export default function Editor({
   value, onChange,
@@ -20,19 +64,31 @@ export default function Editor({
   value: string;
   onChange: (html: string) => void;
 }) {
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+
+  const selectionRef = useRef<{ from: number; to: number } | null>(null);
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      Underline,
+      HighlightMark,
       TextStyle,
       Color,
-      FontSize,
-      TextAlign.configure({ types: ["paragraph", "heading"], alignments: ["left", "center", "right", "justify"] }),
+      TextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left", "center", "right", "justify"] }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { target: "_blank", rel: "noopener noreferrer" },
+      }),
     ],
     content: value || "",
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: "prose-prayer min-h-[180px] outline-none px-4 py-3 text-[15px] leading-relaxed",
+        class: "prose-prayer tiptap min-h-[360px] outline-none px-6 py-5 text-[15px] leading-relaxed",
       },
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -43,19 +99,11 @@ export default function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  // Remember the last selection so we can restore it when the user interacts
-  // with a control outside the editor (number input, color picker).
-  const savedFrom = useRef<number | null>(null);
-  const savedTo = useRef<number | null>(null);
-  const [activeColor, setActiveColor] = useState<string | null>(null);
-  const [recentColors, setRecentColors] = useState<string[]>(DEFAULT_COLORS);
-
   useEffect(() => {
     if (!editor) return;
     const capture = () => {
       const { from, to } = editor.state.selection;
-      savedFrom.current = from;
-      savedTo.current = to;
+      selectionRef.current = { from, to };
       setActiveColor(normalizeHexColor(editor.getAttributes("textStyle").color));
     };
     editor.on("selectionUpdate", capture);
@@ -67,162 +115,258 @@ export default function Editor({
     };
   }, [editor]);
 
-  const [size, setSize] = useState<number>(14);
-
   if (!editor) return null;
 
-  // Before running a command from an outside control, restore the captured
-  // selection so the mark/attribute lands on the right range.
   function withSelection(run: () => void) {
-    if (savedFrom.current != null && savedTo.current != null) {
-      editor!.commands.setTextSelection({ from: savedFrom.current, to: savedTo.current });
-    }
+    if (selectionRef.current) editor!.commands.setTextSelection(selectionRef.current);
     editor!.commands.focus();
     run();
   }
 
-  // preventDefault on mousedown keeps focus in the editor so native selection
-  // isn't collapsed by the button taking focus.
-  const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
+  function applyTextColor(color: string) {
+    const nextColor = normalizeHexColor(color) ?? DEFAULT_TEXT_COLOR;
+    setActiveColor(nextColor);
+    withSelection(() => editor!.chain().setColor(nextColor).run());
+  }
 
-  const Btn = ({ onClick, active, children, title }: {
-    onClick: () => void; active?: boolean; children: React.ReactNode; title: string;
-  }) => (
-    <button type="button" title={title}
-      onMouseDown={noFocusSteal}
-      onClick={onClick}
-      className={`p-1.5 rounded hover:bg-white/5 ${active ? "text-gold" : "text-fg-muted"}`}>
-      {children}
-    </button>
-  );
-
-  function applyFontSize(px: number) {
-    const num = Math.max(6, Math.min(96, Math.round(px)));
-    setSize(num);
+  function applyHighlight(color: string) {
     withSelection(() => {
-      (editor!.chain() as unknown as { setFontSize: (v: string) => { run: () => void } })
-        .setFontSize(`${num}px`).run();
+      editor!.chain().setMark("highlight", { style: `background-color: ${color}` }).run();
     });
   }
-  function bumpSize(delta: number) { applyFontSize(size + delta); }
 
-  function applyColor(c: string) {
-    const color = normalizeHexColor(c) ?? FALLBACK_COLOR;
-    setActiveColor(color);
-    setRecentColors((colors) => [color, ...colors.filter((item) => item.toLowerCase() !== color.toLowerCase())].slice(0, 7));
-    withSelection(() => { editor!.chain().setColor(color).run(); });
+  function clearHighlight() {
+    withSelection(() => editor!.chain().unsetMark("highlight").run());
   }
 
-  function resetColor() {
-    setActiveColor(null);
-    withSelection(() => { editor!.chain().unsetColor().run(); });
+  function openLinkDialog() {
+    if (editor!.isActive("link")) {
+      withSelection(() => editor!.chain().unsetLink().run());
+      return;
+    }
+    const { from, to } = editor!.state.selection;
+    setLinkText(from !== to ? editor!.state.doc.textBetween(from, to) : "");
+    setLinkUrl("");
+    setShowLinkDialog(true);
   }
 
-  const colorPickerValue = activeColor ?? recentColors[0] ?? FALLBACK_COLOR;
+  function insertLink() {
+    const trimmedUrl = linkUrl.trim();
+    if (!trimmedUrl) return;
+    const href = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
+    withSelection(() => {
+      if (linkText.trim()) {
+        editor!.chain().insertContent({
+          type: "text",
+          text: linkText.trim(),
+          marks: [{ type: "link", attrs: { href, target: "_blank", rel: "noopener noreferrer" } }],
+        }).run();
+      } else {
+        editor!.chain().setLink({ href, target: "_blank", rel: "noopener noreferrer" }).run();
+      }
+    });
+    setLinkText("");
+    setLinkUrl("");
+    setShowLinkDialog(false);
+  }
 
   return (
-    <div className="border border-[color:var(--border)] rounded-xl overflow-hidden bg-white/5">
-      <div className="flex items-center flex-wrap gap-1 px-2 py-1 border-b border-[color:var(--border)]">
-        <Btn title="Bold" onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")}><Bold size={15} /></Btn>
-        <Btn title="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")}><Italic size={15} /></Btn>
-        <Btn title="Heading" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })}><Heading2 size={15} /></Btn>
-        <Btn title="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")}><List size={15} /></Btn>
-        <Btn title="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")}><ListOrdered size={15} /></Btn>
-        <Btn title="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")}><Quote size={15} /></Btn>
+    <div className="flex min-h-[460px] flex-col overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]/70 shadow-sm">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-[color:var(--border)] bg-white/[0.035] px-2 py-1.5">
+        <ToolBtn title="Heading 1" active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+          <Heading1 size={16} />
+        </ToolBtn>
+        <ToolBtn title="Heading 2" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+          <Heading2 size={16} />
+        </ToolBtn>
+        <ToolBtn title="Heading 3" active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+          <Heading3 size={16} />
+        </ToolBtn>
 
-        <span className="mx-1 h-4 w-px bg-[color:var(--border)]" />
+        <Separator />
 
-        <Btn title="Align left"    onClick={() => editor.chain().focus().setTextAlign("left").run()}    active={editor.isActive({ textAlign: "left" })}><AlignLeft size={15} /></Btn>
-        <Btn title="Align center"  onClick={() => editor.chain().focus().setTextAlign("center").run()}  active={editor.isActive({ textAlign: "center" })}><AlignCenter size={15} /></Btn>
-        <Btn title="Align right"   onClick={() => editor.chain().focus().setTextAlign("right").run()}   active={editor.isActive({ textAlign: "right" })}><AlignRight size={15} /></Btn>
-        <Btn title="Justify"       onClick={() => editor.chain().focus().setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })}><AlignJustify size={15} /></Btn>
+        <ToolBtn title="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+          <Bold size={16} />
+        </ToolBtn>
+        <ToolBtn title="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+          <Italic size={16} />
+        </ToolBtn>
+        <ToolBtn title="Underline" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+          <UnderlineIcon size={16} />
+        </ToolBtn>
+        <ToolBtn title="Strikethrough" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+          <Strikethrough size={16} />
+        </ToolBtn>
 
-        <span className="mx-1 h-4 w-px bg-[color:var(--border)]" />
+        <Separator />
 
-        <div className="flex items-center gap-0.5 text-xs text-fg-muted">
-          <span className="mr-1">Size</span>
-          <button type="button"
-            onMouseDown={noFocusSteal}
-            onClick={() => bumpSize(-1)}
-            className="p-1 rounded hover:bg-white/5 text-fg-muted active:scale-95"
-            title="Smaller"><Minus size={14} /></button>
-          <input
-            type="number" min={6} max={96}
-            value={size}
-            onMouseDown={noFocusSteal}
-            onChange={(e) => {
-              const n = parseInt(e.target.value, 10);
-              if (!Number.isNaN(n)) applyFontSize(n);
-            }}
-            className="w-10 text-center bg-transparent border border-[color:var(--border)] rounded px-1 py-0.5 text-fg tabular-nums"
-          />
-          <button type="button"
-            onMouseDown={noFocusSteal}
-            onClick={() => bumpSize(+1)}
-            className="p-1 rounded hover:bg-white/5 text-fg-muted active:scale-95"
-            title="Larger"><Plus size={14} /></button>
-        </div>
+        <ColorTool
+          title="Text color"
+          color={activeColor ?? DEFAULT_TEXT_COLOR}
+          onChange={applyTextColor}
+          icon={<Palette size={16} />}
+        />
+        {activeColor && (
+          <ToolBtn title="Reset text color" onClick={() => withSelection(() => editor.chain().unsetColor().run())}>
+            <X size={14} />
+          </ToolBtn>
+        )}
+        <ColorTool
+          title="Highlight"
+          color={DEFAULT_HIGHLIGHT_COLOR}
+          active={editor.isActive("highlight")}
+          onChange={applyHighlight}
+          icon={<Highlighter size={16} />}
+        />
+        {editor.isActive("highlight") && (
+          <ToolBtn title="Remove highlight" onClick={clearHighlight}>
+            <Eraser size={15} />
+          </ToolBtn>
+        )}
 
-        <span className="mx-1 h-4 w-px bg-[color:var(--border)]" />
+        <Separator />
 
-        <div className="flex items-center gap-1 text-xs text-fg-muted">
-          <span>Color</span>
-          <button
-            type="button"
-            title={activeColor ? `Reuse ${activeColor}` : "Reuse recent color"}
-            onMouseDown={noFocusSteal}
-            onClick={() => applyColor(colorPickerValue)}
-            className="h-7 w-7 rounded border border-[color:var(--border)] grid place-items-center hover:border-[color:var(--gold)]"
-          >
-            <span className="h-4 w-4 rounded-sm border border-black/30" style={{ backgroundColor: colorPickerValue }} />
-          </button>
-          <div className="flex items-center gap-0.5">
-            {recentColors.slice(0, 5).map((color) => (
-              <button
-                key={color}
-                type="button"
-                title={`Apply ${color}`}
-                onMouseDown={noFocusSteal}
-                onClick={() => applyColor(color)}
-                className={`h-6 w-6 rounded border p-0.5 hover:border-[color:var(--gold)] ${
-                  activeColor?.toLowerCase() === color.toLowerCase()
-                    ? "border-[color:var(--gold)]"
-                    : "border-[color:var(--border)]"
-                }`}
-              >
-                <span className="block h-full w-full rounded-sm border border-black/30" style={{ backgroundColor: color }} />
-              </button>
-            ))}
-          </div>
-          <label
-            title="Choose another color"
-            onMouseDown={noFocusSteal}
-            className="h-7 px-2 rounded border border-[color:var(--border)] hover:border-[color:var(--gold)] cursor-pointer inline-flex items-center gap-1 text-fg-muted"
-          >
-            <Palette size={14} />
-            <span>More</span>
-            <input
-              type="color"
-              value={colorPickerValue}
-              onChange={(e) => applyColor(e.target.value)}
-              className="sr-only"
-            />
-          </label>
-          <button type="button"
-            onMouseDown={noFocusSteal}
-            onClick={resetColor}
-            className="text-fg-muted hover:text-gold underline">
-            reset
-          </button>
+        <ToolBtn title="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+          <List size={16} />
+        </ToolBtn>
+        <ToolBtn title="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+          <ListOrdered size={16} />
+        </ToolBtn>
+
+        <Separator />
+
+        <ToolBtn title="Block quote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+          <Quote size={16} />
+        </ToolBtn>
+        <ToolBtn title="Horizontal rule" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
+          <Minus size={16} />
+        </ToolBtn>
+
+        <Separator />
+
+        <ToolBtn title="Align left" active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
+          <AlignLeft size={16} />
+        </ToolBtn>
+        <ToolBtn title="Align center" active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()}>
+          <AlignCenter size={16} />
+        </ToolBtn>
+
+        <Separator />
+
+        <div className="relative">
+          <ToolBtn title={editor.isActive("link") ? "Remove link" : "Insert link"} active={editor.isActive("link")} onClick={openLinkDialog}>
+            <Link2 size={16} />
+          </ToolBtn>
+          {showLinkDialog && (
+            <div className="absolute left-0 top-full z-50 mt-1 w-72 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-xl">
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  placeholder="Display text (optional)"
+                  className="input text-sm"
+                  autoFocus
+                />
+                <input
+                  type="url"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="input text-sm"
+                  onKeyDown={(e) => { if (e.key === "Enter") insertLink(); }}
+                />
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowLinkDialog(false)} className="btn-ghost px-2.5 py-1 text-xs">Cancel</button>
+                  <button type="button" onClick={insertLink} disabled={!linkUrl.trim()} className="btn-gold px-2.5 py-1 text-xs disabled:opacity-40">Insert</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1" />
 
-        <Btn title="Undo" onClick={() => editor.chain().focus().undo().run()}><Undo2 size={15} /></Btn>
-        <Btn title="Redo" onClick={() => editor.chain().focus().redo().run()}><Redo2 size={15} /></Btn>
+        <ToolBtn title="Clear formatting" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}>
+          <RemoveFormatting size={16} />
+        </ToolBtn>
+        <ToolBtn title="Undo" onClick={() => editor.chain().focus().undo().run()}>
+          <Undo2 size={16} />
+        </ToolBtn>
+        <ToolBtn title="Redo" onClick={() => editor.chain().focus().redo().run()}>
+          <Redo2 size={16} />
+        </ToolBtn>
       </div>
-      <EditorContent editor={editor} />
+
+      <div className="flex-1 overflow-y-auto bg-black/10">
+        <EditorContent editor={editor} />
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-[color:var(--border)] bg-white/[0.025] px-4 py-2 text-xs text-fg-muted">
+        <BookOpen size={14} />
+        <span>Prayer point editor</span>
+      </div>
     </div>
+  );
+}
+
+function ToolBtn({
+  active, onClick, title, children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={`grid h-8 w-8 place-items-center rounded-md transition-colors ${
+        active
+          ? "bg-[color:var(--gold)]/20 text-gold"
+          : "text-fg-muted hover:bg-white/10 hover:text-fg"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Separator() {
+  return <div className="mx-0.5 h-5 w-px bg-[color:var(--border)]" />;
+}
+
+function ColorTool({
+  active, color, icon, onChange, title,
+}: {
+  active?: boolean;
+  color: string;
+  icon: React.ReactNode;
+  onChange: (color: string) => void;
+  title: string;
+}) {
+  return (
+    <label
+      title={title}
+      className={`relative grid h-8 w-8 cursor-pointer place-items-center rounded-md transition-colors ${
+        active
+          ? "bg-[color:var(--gold)]/20 text-gold"
+          : "text-fg-muted hover:bg-white/10 hover:text-fg"
+      }`}
+    >
+      <input
+        type="color"
+        value={normalizeHexColor(color) ?? DEFAULT_TEXT_COLOR}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        tabIndex={-1}
+      />
+      {icon}
+      <span className="absolute bottom-1 h-0.5 w-4 rounded-full" style={{ backgroundColor: color }} />
+    </label>
   );
 }
 
@@ -230,9 +374,7 @@ function normalizeHexColor(color: unknown) {
   if (typeof color !== "string") return null;
   const value = color.trim();
   const shortHex = /^#([0-9a-f]{3})$/i.exec(value);
-  if (shortHex) {
-    return `#${shortHex[1].split("").map((ch) => ch + ch).join("")}`.toLowerCase();
-  }
+  if (shortHex) return `#${shortHex[1].split("").map((ch) => ch + ch).join("")}`.toLowerCase();
   if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
   const rgb = /^rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})/i.exec(value);
   if (!rgb) return null;

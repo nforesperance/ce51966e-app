@@ -184,10 +184,12 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
         .card-prose p:empty::before { content: "\\00a0"; }
         .card-prose strong { color: inherit; font-weight: 700; }
         .card-prose em { font-style: italic; }
+        .card-prose mark { border-radius: 2px; padding: 0 2px; color: inherit; }
         .card-prose ul, .card-prose ol { margin: 4px 0 4px 20px; }
         .card-prose li { margin: 2px 0; }
         .card-prose blockquote { border-left: 2px solid ${accent}; padding-left: 10px; margin: 6px 0; font-style: italic; }
-        .card-prose h2, .card-prose h3 { color: ${accent}; font-weight: 700; margin: 6px 0 4px; }
+        .card-prose h1, .card-prose h2, .card-prose h3 { color: ${accent}; font-weight: 700; margin: 6px 0 4px; }
+        .card-prose h1 { font-size: 1.3em; }
       `}</style>
     </div>
   );
