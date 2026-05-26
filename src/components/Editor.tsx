@@ -3,7 +3,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import { Mark, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { TextStyle, Color } from "@tiptap/extension-text-style";
+import { TextStyle, Color, FontSize } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
@@ -23,6 +23,7 @@ import {
   ListOrdered,
   Minus,
   Palette,
+  Plus,
   Quote,
   Redo2,
   RemoveFormatting,
@@ -35,6 +36,7 @@ import { useEffect, useRef, useState } from "react";
 
 const DEFAULT_TEXT_COLOR = "#f0e6d2";
 const DEFAULT_HIGHLIGHT_COLOR = "#fef08a";
+const DEFAULT_FONT_SIZE = 15;
 
 const HighlightMark = Mark.create({
   name: "highlight",
@@ -68,6 +70,7 @@ export default function Editor({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [fontSizeInput, setFontSizeInput] = useState("");
 
   const selectionRef = useRef<{ from: number; to: number } | null>(null);
 
@@ -78,6 +81,7 @@ export default function Editor({
       HighlightMark,
       TextStyle,
       Color,
+      FontSize,
       TextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left", "center", "right", "justify"] }),
       Link.configure({
         openOnClick: false,
@@ -105,6 +109,7 @@ export default function Editor({
       const { from, to } = editor.state.selection;
       selectionRef.current = { from, to };
       setActiveColor(normalizeHexColor(editor.getAttributes("textStyle").color));
+      setFontSizeInput(parseFontSize(editor.getAttributes("textStyle").fontSize)?.toString() ?? "");
     };
     editor.on("selectionUpdate", capture);
     editor.on("transaction", capture);
@@ -137,6 +142,32 @@ export default function Editor({
 
   function clearHighlight() {
     withSelection(() => editor!.chain().unsetMark("highlight").run());
+  }
+
+  function applyFontSize(value: string | number) {
+    const parsed = typeof value === "number" ? value : parseFloat(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    const next = roundFontSize(parsed);
+    setFontSizeInput(next.toString());
+    withSelection(() => {
+      (editor!.chain() as unknown as { setFontSize: (size: string) => { run: () => void } })
+        .setFontSize(`${next}px`)
+        .run();
+    });
+  }
+
+  function bumpFontSize(delta: number) {
+    const current = parseFontSize(fontSizeInput) ?? parseFontSize(editor!.getAttributes("textStyle").fontSize) ?? DEFAULT_FONT_SIZE;
+    applyFontSize(Math.max(1, current + delta));
+  }
+
+  function resetFontSize() {
+    setFontSizeInput("");
+    withSelection(() => {
+      (editor!.chain() as unknown as { unsetFontSize: () => { run: () => void } })
+        .unsetFontSize()
+        .run();
+    });
   }
 
   function openLinkDialog() {
@@ -223,6 +254,53 @@ export default function Editor({
             <Eraser size={15} />
           </ToolBtn>
         )}
+
+        <Separator />
+
+        <div className="flex h-8 items-center gap-1 rounded-md border border-[color:var(--border)] px-1 text-fg-muted">
+          <button
+            type="button"
+            title="Smaller text"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => bumpFontSize(-1)}
+            className="grid h-6 w-6 place-items-center rounded hover:bg-white/10 hover:text-fg"
+          >
+            <Minus size={14} />
+          </button>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={fontSizeInput}
+            onChange={(e) => {
+              setFontSizeInput(e.target.value);
+              applyFontSize(e.target.value);
+            }}
+            placeholder={DEFAULT_FONT_SIZE.toString()}
+            title="Font size in pixels"
+            className="h-6 w-12 bg-transparent text-center text-xs tabular-nums text-fg outline-none placeholder:text-fg-muted"
+          />
+          <button
+            type="button"
+            title="Larger text"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => bumpFontSize(1)}
+            className="grid h-6 w-6 place-items-center rounded hover:bg-white/10 hover:text-fg"
+          >
+            <Plus size={14} />
+          </button>
+          {fontSizeInput && (
+            <button
+              type="button"
+              title="Reset font size"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={resetFontSize}
+              className="grid h-6 w-6 place-items-center rounded hover:bg-white/10 hover:text-fg"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
 
         <Separator />
 
@@ -382,4 +460,15 @@ function normalizeHexColor(color: unknown) {
     const n = Math.max(0, Math.min(255, parseInt(part, 10)));
     return n.toString(16).padStart(2, "0");
   }).join("")}`;
+}
+
+function parseFontSize(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function roundFontSize(value: number) {
+  return Math.round(value * 10) / 10;
 }
