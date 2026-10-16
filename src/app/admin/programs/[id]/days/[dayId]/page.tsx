@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import DayEditorClient from "./DayEditorClient";
+import type { CardConfig } from "@/lib/cardConfig";
 
 export const dynamic = "force-dynamic";
 
@@ -45,15 +46,16 @@ export default async function DayEditorPage({ params }: { params: Promise<{ id: 
       </div>
       <DayEditorClient
         dayId={day.id}
+        programId={id}
         programName={program?.name ?? ""}
         dayNumber={day.day_number}
-        cardDefaults={(program?.card_defaults ?? {}) as Record<string, unknown>}
+        cardDefaults={(program?.card_defaults ?? {}) as CardConfig}
         initialPrayerPoint={{
           title: prayerPoint?.title ?? "",
           body_html: prayerPoint?.body_markdown ?? "",
           image_url: prayerPoint?.image_url ?? null,
           scriptures,
-          card_config: (prayerPoint?.card_config ?? {}) as Record<string, unknown>,
+          card_config: (prayerPoint?.card_config ?? {}) as CardConfig,
         }}
         initialTasks={tasks ?? []}
       />

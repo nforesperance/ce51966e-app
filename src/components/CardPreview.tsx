@@ -1,38 +1,11 @@
 "use client";
 
 import { forwardRef } from "react";
+import { THEME_MAP, resolveCardConfig, type CardConfig } from "@/lib/cardConfig";
+import { normalizeHexColor } from "@/lib/colors";
 
-export type CardConfig = {
-  theme?: string;
-  group_name?: string;
-  level?: string;
-  group_name_size?: number;
-  level_size?: number;
-  day_size?: number;
-  prayer_font_size?: number;
-  verse_font_size?: number;
-  footer_text?: string;
-  show_day?: boolean;
-  show_level?: boolean;
-  rounded_corners?: boolean;
-};
-
-export const THEMES: { value: string; label: string; accent: string; bg: string }[] = [
-  { value: "theme-royal",    label: "Royal Gold",    accent: "#d4af37", bg: "linear-gradient(160deg,#0f3460 0%,#1a1a2e 50%,#16213e 100%)" },
-  { value: "theme-fire",     label: "Fire",          accent: "#f39c12", bg: "linear-gradient(160deg,#4a1a0a 0%,#1a0a04 50%,#2d1206 100%)" },
-  { value: "theme-grace",    label: "Grace Purple",  accent: "#c39be8", bg: "linear-gradient(160deg,#1a0a2e 0%,#0d0620 50%,#1a0e30 100%)" },
-  { value: "theme-earth",    label: "Earth Green",   accent: "#6ecf8e", bg: "linear-gradient(160deg,#1a2e0f 0%,#0d1a08 50%,#1e3012 100%)" },
-  { value: "theme-ocean",    label: "Ocean Blue",    accent: "#4dd0e1", bg: "linear-gradient(160deg,#0a2e4e 0%,#061a2e 50%,#0d3355 100%)" },
-  { value: "theme-crimson",  label: "Crimson",       accent: "#ff6b81", bg: "linear-gradient(160deg,#3b0a0a 0%,#1a0505 50%,#2a0808 100%)" },
-  { value: "theme-midnight", label: "Midnight",      accent: "#e0e0e0", bg: "linear-gradient(160deg,#141428 0%,#0a0a1a 50%,#1a1a30 100%)" },
-  { value: "theme-sunrise",  label: "Sunrise",       accent: "#ffd166", bg: "linear-gradient(160deg,#4a2010 0%,#2a1008 50%,#3d1a0e 100%)" },
-  { value: "theme-silver",   label: "Silver",        accent: "#c8c8d8", bg: "linear-gradient(160deg,#2c2c3a 0%,#1a1a24 50%,#262632 100%)" },
-  { value: "theme-burgundy", label: "Burgundy Wine", accent: "#f48fb1", bg: "linear-gradient(160deg,#3b0f2a 0%,#1a0812 50%,#2e0c20 100%)" },
-  { value: "theme-emerald",  label: "Emerald",       accent: "#58d68d", bg: "linear-gradient(160deg,#0a3020 0%,#051a10 50%,#0e3828 100%)" },
-  { value: "theme-sapphire", label: "Sapphire",      accent: "#9fa8da", bg: "linear-gradient(160deg,#0d1b4a 0%,#060e28 50%,#10204e 100%)" },
-];
-
-const THEME_MAP = Object.fromEntries(THEMES.map((t) => [t.value, t]));
+export type { CardConfig } from "@/lib/cardConfig";
+export { THEMES } from "@/lib/cardConfig";
 
 type Scripture = { reference: string; text: string | null };
 
@@ -50,20 +23,22 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
   { config, groupName, dayNumber, title, bodyHtml, scriptures, width = 440 },
   ref
 ) {
-  const theme = THEME_MAP[config.theme ?? "theme-royal"] ?? THEME_MAP["theme-royal"];
-  const accent = theme.accent;
+  const c = resolveCardConfig(config);
+  const theme = THEME_MAP[c.theme] ?? THEME_MAP["theme-royal"];
+  const accent = normalizeHexColor(c.accent_color) ?? theme.accent;
   const bg = theme.bg;
 
-  const dispGroup = config.group_name?.trim() || groupName;
-  const showDay = config.show_day !== false && dayNumber != null;
-  const footer = config.footer_text?.trim();
+  const dispGroup = c.group_name.trim() || groupName;
+  const showDay = c.show_day && dayNumber != null;
+  const footer = c.footer_text.trim();
 
-  const groupSize = config.group_name_size ?? 26;
-  const daySize = config.day_size ?? 44;
-  const prayerSize = config.prayer_font_size ?? 15;
-  const verseSize = config.verse_font_size ?? 13;
+  const groupSize = c.group_name_size;
+  const daySize = c.day_size;
+  const titleSize = c.title_size;
+  const prayerSize = c.prayer_font_size;
+  const verseSize = c.verse_font_size;
 
-  const rounded = config.rounded_corners !== false;
+  const rounded = c.rounded_corners;
   return (
     <div
       ref={ref}
@@ -124,7 +99,7 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
           {title && (
             <div
               style={{
-                fontSize: 17, fontWeight: 700, color: accent,
+                fontSize: titleSize, fontWeight: 700, color: accent,
                 marginBottom: 8, textAlign: "center",
               }}
             >
@@ -172,7 +147,7 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
         <div
           style={{
             marginTop: 12, textAlign: "center", fontSize: 10,
-            color: "#555", letterSpacing: 1, textTransform: "uppercase",
+            color: "rgba(240,230,210,0.45)", letterSpacing: 1, textTransform: "uppercase",
           }}
         >
           {footer}
@@ -186,10 +161,16 @@ const CardPreview = forwardRef<HTMLDivElement, CardProps>(function CardPreview(
         .card-prose em { font-style: italic; }
         .card-prose mark { border-radius: 2px; padding: 0 2px; color: inherit; }
         .card-prose ul, .card-prose ol { margin: 4px 0 4px 20px; }
+        .card-prose ul { list-style: disc; }
+        .card-prose ol { list-style: decimal; }
+        .card-prose a { color: ${accent}; text-decoration: underline; }
+        .card-prose hr { border: 0; border-top: 1px solid ${accent}55; margin: 10px 0; }
         .card-prose li { margin: 2px 0; }
         .card-prose blockquote { border-left: 2px solid ${accent}; padding-left: 10px; margin: 6px 0; font-style: italic; }
         .card-prose h1, .card-prose h2, .card-prose h3 { color: ${accent}; font-weight: 700; margin: 6px 0 4px; }
         .card-prose h1 { font-size: 1.3em; }
+        .card-prose h2 { font-size: 1.15em; }
+        .card-prose h3 { font-size: 1.05em; }
       `}</style>
     </div>
   );
