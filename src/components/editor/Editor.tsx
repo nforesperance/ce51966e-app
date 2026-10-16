@@ -26,8 +26,6 @@ export default function Editor({
   onChange: (html: string) => void;
   placeholder?: string;
 }) {
-  const [linkOpen, setLinkOpen] = useState(false);
-  const [painter, setPainter] = useState<readonly PMMark[] | null>(null);
   const shortcutRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
 
   const editor = useEditor({
@@ -48,10 +46,26 @@ export default function Editor({
     if (editor && value !== editor.getHTML()) editor.commands.setContent(value || "", { emitUpdate: false });
   }, [editor, value]);
 
+  if (!editor) {
+    return <div className="min-h-[460px] animate-pulse rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]/50" />;
+  }
+  return <EditorBody editor={editor} shortcutRef={shortcutRef} />;
+}
+
+/**
+ * Mounted only once the editor exists: useEditorState captures its editor on
+ * first render and won't pick up a late one until the next transaction.
+ */
+function EditorBody({ editor, shortcutRef }: {
+  editor: TiptapEditor;
+  shortcutRef: React.RefObject<(e: KeyboardEvent) => boolean>;
+}) {
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [painter, setPainter] = useState<readonly PMMark[] | null>(null);
+
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) => {
-      if (!e) return null;
       const textStyle = e.getAttributes("textStyle");
       const level = ([1, 2, 3] as const).find((l) => e.isActive("heading", { level: l }));
       return {
@@ -81,7 +95,7 @@ export default function Editor({
 
   // Format painter: copy marks from the selection, paint them onto the next one.
   useEffect(() => {
-    if (!editor || !painter) return;
+    if (!painter) return;
     const dom = editor.view.dom;
     const onUp = () => requestAnimationFrame(() => {
       const { from, to, empty } = editor.state.selection;
@@ -103,13 +117,13 @@ export default function Editor({
     };
   }, [editor, painter]);
 
-  const docHtml = editor && state ? editor.getHTML() : "";
+  const docHtml = editor.getHTML();
   const docTextColors = useMemo(() => documentColors(docHtml, "text"), [docHtml]);
   const docHighlightColors = useMemo(() => documentColors(docHtml, "highlight"), [docHtml]);
 
   useEffect(() => {
     shortcutRef.current = (e: KeyboardEvent) => {
-      if (!editor || !(e.metaKey || e.ctrlKey)) return false;
+      if (!(e.metaKey || e.ctrlKey)) return false;
       const key = e.key;
       if (key.toLowerCase() === "k" && !e.shiftKey) { setLinkOpen(true); return true; }
       if (key === "]" || (e.shiftKey && (key === ">" || key === "."))) { bumpFontSize(editor, 1); return true; }
@@ -117,11 +131,7 @@ export default function Editor({
       if (key === " " ) { editor.chain().focus().unsetAllMarks().run(); return true; }
       return false;
     };
-  }, [editor]);
-
-  if (!editor || !state) {
-    return <div className="min-h-[460px] animate-pulse rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]/50" />;
-  }
+  }, [editor, shortcutRef]);
 
   const chain = () => editor.chain().focus();
 
