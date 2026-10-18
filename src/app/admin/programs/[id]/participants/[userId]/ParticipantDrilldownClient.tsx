@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, BookOpen, ListChecks, Check, Minus, Plus, Trash2, MoreHorizontal, X, Gift } from "lucide-react";
-import { TASK_DEFAULTS } from "@/lib/appDefaults";
 
 type Task = {
   id: string;
@@ -29,13 +28,14 @@ type Day = { id: string; day_number: number; date: string; tasks: Task[] };
 type Bonus = { id: string; points: number; reason: string | null; created_at: string; awarded_by: string | null };
 
 export default function ParticipantDrilldownClient({
-  programId, programTimezone, userId, days, bonuses: initialBonuses,
+  programId, programTimezone, userId, days, bonuses: initialBonuses, defaultMaxPoints,
 }: {
   programId: string;
   programTimezone: string;
   userId: string;
   days: Day[];
   bonuses: Bonus[];
+  defaultMaxPoints: number;
 }) {
   const router = useRouter();
   const [bonuses, setBonuses] = useState(initialBonuses);
@@ -123,7 +123,7 @@ export default function ParticipantDrilldownClient({
       </section>
 
       {bonusOpen && <BonusDialog onClose={() => setBonusOpen(false)} onAward={awardBonus} />}
-      {override && <OverrideDialog task={override} onClose={() => setOverride(null)} onApply={doOverride} />}
+      {override && <OverrideDialog task={override} defaultMaxPoints={defaultMaxPoints} onClose={() => setOverride(null)} onApply={doOverride} />}
     </div>
   );
 }
@@ -247,12 +247,13 @@ function BonusDialog({ onClose, onAward }: { onClose: () => void; onAward: (p: n
   );
 }
 
-function OverrideDialog({ task, onClose, onApply }: {
+function OverrideDialog({ task, defaultMaxPoints, onClose, onApply }: {
   task: Task;
+  defaultMaxPoints: number;
   onClose: () => void;
   onApply: (t: Task, action: "full" | "custom" | "clear", points?: number, reason?: string) => void;
 }) {
-  const [points, setPoints] = useState((task.max_points ?? TASK_DEFAULTS.maxPoints).toString());
+  const [points, setPoints] = useState((task.max_points ?? defaultMaxPoints).toString());
   const [reason, setReason] = useState("");
   return (
     <Modal title={task.title} onClose={onClose}>

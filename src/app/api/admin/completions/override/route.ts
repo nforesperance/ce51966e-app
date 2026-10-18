@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
-import { TASK_DEFAULTS } from "@/lib/appDefaults";
+import { getAppSettings } from "@/lib/settings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const Body = z.object({
@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const awarded = action === "full" ? (task.max_points ?? TASK_DEFAULTS.maxPoints) : Math.max(0, points ?? 0);
+  const awarded = action === "full"
+    ? (task.max_points ?? (await getAppSettings()).tasks.maxPoints)
+    : Math.max(0, points ?? 0);
   const now = new Date().toISOString();
 
   const { data: existing } = await sb.from("task_completions")

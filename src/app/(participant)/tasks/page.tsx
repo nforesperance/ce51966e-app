@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
 import { loadToday } from "@/lib/loadToday";
 import TasksSection from "./TasksSection";
+import { getAppSettings } from "@/lib/settings";
 import BottomNav from "@/components/BottomNav";
 import LockedBanner from "@/components/LockedBanner";
 import ProgramSwitcher from "@/components/ProgramSwitcher";
@@ -46,7 +47,8 @@ export default async function TasksPage() {
       {tasks.length === 0 ? (
         <div className="card p-6 text-center text-fg-muted">No tasks for this day.</div>
       ) : (
-        <TasksSection tasks={tasks} locked={locked} />
+        <TasksSection tasks={tasks} locked={locked}
+          minCompletionPercent={(await getAppSettings()).tasks.prayer.minCompletionPercent} />
       )}
 
       <div className="mt-4 text-center">

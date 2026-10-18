@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadActionableTaskForUser } from "@/lib/tasks";
 import { scorePrayer } from "@/lib/scoring";
+import { getAppSettings } from "@/lib/settings";
 
 const Body = z.object({ action: z.enum(["start", "pause", "resume", "restart", "complete"]) });
 
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
         firstStartedAt: new Date(firstStart),
         completedAt: now,
         elapsedSeconds: finalElapsed,
+        defaults: (await getAppSettings()).tasks,
       });
       next = {
         started_at: null,

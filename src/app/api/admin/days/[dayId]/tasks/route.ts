@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
-import { TASK_DEFAULTS } from "@/lib/appDefaults";
+import { getAppSettings } from "@/lib/settings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const TaskBody = z.object({
@@ -16,7 +16,7 @@ const TaskBody = z.object({
   max_points: z.number().int().min(1).max(10000).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional().default({}),
   position: z.number().int().min(0).max(100).optional(),
-  translation: z.enum(["kjv", "web"]).optional().default("kjv"),
+  translation: z.enum(["kjv", "web"]).optional(),
 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ dayId: string }> }) {
@@ -27,6 +27,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ dayId: str
   if (!parsed.success) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
 
   const sb = supabaseAdmin();
+  const { tasks: defaults } = await getAppSettings();
+  const isPrayer = parsed.data.type === "prayer";
   // Determine next position if not provided
   let position = parsed.data.position;
   if (position === undefined) {
@@ -39,15 +41,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ dayId: str
     program_day_id: dayId,
     type: parsed.data.type,
     title: parsed.data.title,
-    duration_minutes: parsed.data.duration_minutes ?? (parsed.data.type === "prayer" ? TASK_DEFAULTS.prayer.durationMinutes : null),
-    target_start_time: parsed.data.target_start_time ?? (parsed.data.type === "prayer" ? TASK_DEFAULTS.prayer.targetStartTime : null),
-    full_marks_window_minutes: parsed.data.full_marks_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksWindowMinutes,
-    zero_marks_window_minutes: parsed.data.zero_marks_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksWindowMinutes,
-    full_marks_end_window_minutes: parsed.data.full_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksEndWindowMinutes,
-    zero_marks_end_window_minutes: parsed.data.zero_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksEndWindowMinutes,
-    max_points: parsed.data.max_points ?? TASK_DEFAULTS.maxPoints,
+    duration_minutes: parsed.data.duration_minutes ?? (isPrayer ? defaults.prayer.durationMinutes : null),
+    target_start_time: parsed.data.target_start_time ?? (isPrayer ? defaults.prayer.targetStartTime : null),
+    full_marks_window_minutes: parsed.data.full_marks_window_minutes ?? defaults.prayer.fullMarksWindowMinutes,
+    zero_marks_window_minutes: parsed.data.zero_marks_window_minutes ?? defaults.prayer.zeroMarksWindowMinutes,
+    full_marks_end_window_minutes: parsed.data.full_marks_end_window_minutes ?? defaults.prayer.fullMarksEndWindowMinutes,
+    zero_marks_end_window_minutes: parsed.data.zero_marks_end_window_minutes ?? defaults.prayer.zeroMarksEndWindowMinutes,
+    max_points: parsed.data.max_points ?? defaults.maxPoints,
     metadata: parsed.data.metadata ?? {},
-    translation: parsed.data.translation ?? "kjv",
+    translation: parsed.data.translation ?? defaults.reading.translation,
     position,
   }).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

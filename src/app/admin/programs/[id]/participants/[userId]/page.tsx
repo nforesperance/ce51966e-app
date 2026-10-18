@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import ParticipantDrilldownClient from "./ParticipantDrilldownClient";
+import { getAppSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,7 @@ export default async function ParticipantDrilldown({
       </div>
 
       <ParticipantDrilldownClient
+        defaultMaxPoints={(await getAppSettings()).tasks.maxPoints}
         programId={id}
         programTimezone={program.timezone}
         userId={userId}

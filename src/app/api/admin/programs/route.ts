@@ -3,14 +3,15 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { eachDate, daysBetween } from "@/lib/dates";
+import { getAppSettings } from "@/lib/settings";
 
 const Body = z.object({
   name: z.string().min(1).max(120),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  timezone: z.string().min(1).max(64).default("UTC"),
-  next_day_preview_hours: z.number().int().min(0).max(24).default(0),
-  day_unlock_offset_minutes: z.number().int().min(0).max(60).default(0),
+  timezone: z.string().min(1).max(64).optional(),
+  next_day_preview_hours: z.number().int().min(0).max(24).optional(),
+  day_unlock_offset_minutes: z.number().int().min(0).max(60).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -26,15 +27,17 @@ export async function POST(req: NextRequest) {
   if (total > 365) return NextResponse.json({ error: "Program too long (max 365 days)" }, { status: 400 });
 
   const sb = supabaseAdmin();
+  const { program: defaults } = await getAppSettings();
   const { data: program, error } = await sb
     .from("programs")
     .insert({
       name: parsed.data.name,
       start_date: parsed.data.start_date,
       end_date: parsed.data.end_date,
-      timezone: parsed.data.timezone,
-      next_day_preview_hours: parsed.data.next_day_preview_hours,
-      day_unlock_offset_minutes: parsed.data.day_unlock_offset_minutes,
+      timezone: parsed.data.timezone ?? defaults.timezone,
+      next_day_preview_hours: parsed.data.next_day_preview_hours ?? defaults.nextDayPreviewHours,
+      day_unlock_offset_minutes: parsed.data.day_unlock_offset_minutes ?? defaults.dayUnlockOffsetMinutes,
+      card_defaults: {},  // inherit the global card settings
       created_by: guard.user.id,
     })
     .select("id, name, start_date, end_date, timezone, next_day_preview_hours, day_unlock_offset_minutes, created_at")

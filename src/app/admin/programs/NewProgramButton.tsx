@@ -3,17 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
+import type { AppSettings } from "@/lib/appDefaults";
+import { timezoneOptions } from "@/lib/timezones";
 
-const TIMEZONES = [
-  "UTC", "Africa/Douala", "Africa/Lagos", "Africa/Nairobi", "Africa/Johannesburg",
-  "Europe/London", "Europe/Paris", "America/New_York", "America/Los_Angeles", "Asia/Dubai",
-];
-
-export default function NewProgramButton() {
+export default function NewProgramButton({ defaults }: { defaults: AppSettings["program"] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0, day_unlock_offset_minutes: 0 });
+  const blank = {
+    name: "", start_date: "", end_date: "",
+    timezone: defaults.timezone,
+    next_day_preview_hours: defaults.nextDayPreviewHours,
+    day_unlock_offset_minutes: defaults.dayUnlockOffsetMinutes,
+  };
+  const [f, setF] = useState(blank);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +28,7 @@ export default function NewProgramButton() {
       const j = await res.json();
       if (!res.ok) { alert(j.error ?? "Failed"); return; }
       setOpen(false);
-      setF({ name: "", start_date: "", end_date: "", timezone: "UTC", next_day_preview_hours: 0, day_unlock_offset_minutes: 0 });
+      setF(blank);
       router.refresh();
       router.push(`/admin/programs/${j.program.id}`);
     } finally { setBusy(false); }
@@ -66,7 +69,7 @@ export default function NewProgramButton() {
                 <label className="label block mb-1">Timezone</label>
                 <select className="input" value={f.timezone}
                   onChange={(e) => setF({ ...f, timezone: e.target.value })}>
-                  {TIMEZONES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {timezoneOptions(f.timezone).map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <p className="text-xs text-fg-muted mt-1">
                   Used for daily cutoffs and prayer timing scoring.

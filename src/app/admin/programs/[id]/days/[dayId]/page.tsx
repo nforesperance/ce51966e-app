@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import DayEditorClient from "./DayEditorClient";
 import type { CardConfig } from "@/lib/cardConfig";
+import { getAppSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export default async function DayEditorPage({ params }: { params: Promise<{ id: 
     .from("prayer_points")
     .select("id, title, body_markdown, image_url, card_config, scriptures(reference, text, position)")
     .eq("program_day_id", dayId).maybeSingle();
+
+  const { tasks: taskDefaults, card: cardSettings } = await getAppSettings();
 
   const { data: tasks } = await sb
     .from("tasks")
@@ -50,6 +53,7 @@ export default async function DayEditorPage({ params }: { params: Promise<{ id: 
         programName={program?.name ?? ""}
         dayNumber={day.day_number}
         cardDefaults={(program?.card_defaults ?? {}) as CardConfig}
+        settings={{ tasks: taskDefaults, card: cardSettings }}
         initialPrayerPoint={{
           title: prayerPoint?.title ?? "",
           body_html: prayerPoint?.body_markdown ?? "",

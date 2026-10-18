@@ -8,7 +8,7 @@ import {
 import Editor from "@/components/editor/Editor";
 import CardBuilder from "@/components/CardBuilder";
 import PresetMenu from "@/components/PresetMenu";
-import { TASK_DEFAULTS } from "@/lib/appDefaults";
+import type { AppSettings } from "@/lib/appDefaults";
 import type { CardConfig } from "@/lib/cardConfig";
 
 type Scripture = { reference: string; text: string };
@@ -38,13 +38,14 @@ type Task = {
 };
 
 export default function DayEditorClient({
-  dayId, programId, programName, dayNumber, cardDefaults, initialPrayerPoint, initialTasks,
+  dayId, programId, programName, dayNumber, cardDefaults, settings, initialPrayerPoint, initialTasks,
 }: {
   dayId: string;
   programId: string;
   programName: string;
   dayNumber: number;
   cardDefaults: CardConfig;
+  settings: Pick<AppSettings, "tasks" | "card">;
   initialPrayerPoint: PrayerPoint;
   initialTasks: Task[];
 }) {
@@ -244,7 +245,7 @@ export default function DayEditorClient({
 
       {/* ---------- Card preview / export ---------- */}
       <CardBuilder
-        programDefaults={programDefaults}
+        programDefaults={{ ...settings.card, ...programDefaults }}
         overrides={pp.card_config}
         onOverridesChange={(c) => setPp((p) => ({ ...p, card_config: c }))}
         onSaveProgramDefaults={saveProgramDefaults}
@@ -272,7 +273,7 @@ export default function DayEditorClient({
             {tasks.map((t) => (
               <TaskCard key={t.id} task={t}
                 onEdit={() => setTaskOpen({ task: t })}
-                onDuplicate={() => setTaskOpen({ task: null, template: { ...taskToForm(t), title: `${t.title} (copy)` } })}
+                onDuplicate={() => setTaskOpen({ task: null, template: { ...taskToForm(t, settings.tasks), title: `${t.title} (copy)` } })}
                 onDelete={() => deleteTask(t.id)} />
             ))}
           </div>
@@ -281,6 +282,7 @@ export default function DayEditorClient({
 
       {taskOpen && (
         <TaskDialog
+          defaults={settings.tasks}
           dayId={dayId}
           task={taskOpen.task}
           template={taskOpen.template}
@@ -363,25 +365,27 @@ type TaskPreset = {
   translation?: Translation;
 };
 
-function defaultForm(type: TaskType): TaskForm {
-  const p = TASK_DEFAULTS.prayer;
+type TaskDefaults = AppSettings["tasks"];
+
+function defaultForm(type: TaskType, defaults: TaskDefaults): TaskForm {
+  const p = defaults.prayer;
   return {
     type,
-    title: type === "prayer" ? p.title : type === "reading" ? TASK_DEFAULTS.reading.title : "",
+    title: type === "prayer" ? p.title : type === "reading" ? defaults.reading.title : "",
     duration: String(p.durationMinutes),
     start: p.targetStartTime,
     fullWin: String(p.fullMarksWindowMinutes),
     zeroWin: String(p.zeroMarksWindowMinutes),
     fullEndWin: String(p.fullMarksEndWindowMinutes),
     zeroEndWin: String(p.zeroMarksEndWindowMinutes),
-    maxPts: String(TASK_DEFAULTS.maxPoints),
+    maxPts: String(defaults.maxPoints),
     chapters: "",
-    translation: "kjv",
+    translation: defaults.reading.translation,
   };
 }
 
-function taskToForm(t: Task): TaskForm {
-  const d = defaultForm(t.type);
+function taskToForm(t: Task, defaults: TaskDefaults): TaskForm {
+  const d = defaultForm(t.type, defaults);
   const str = (v: number | null | undefined, fallback: string) => (v == null ? fallback : String(v));
   return {
     type: t.type,
@@ -415,8 +419,8 @@ function formToPreset(f: TaskForm): TaskPreset {
   return preset;
 }
 
-function presetToForm(p: TaskPreset, current: TaskForm): TaskForm {
-  const d = defaultForm(p.type);
+function presetToForm(p: TaskPreset, current: TaskForm, defaults: TaskDefaults): TaskForm {
+  const d = defaultForm(p.type, defaults);
   const str = (v: number | null | undefined, fallback: string) => (v == null ? fallback : String(v));
   return {
     ...current,
@@ -444,7 +448,8 @@ function describeTaskPreset(p: TaskPreset): string {
   return parts.join(" · ");
 }
 
-function TaskDialog({ dayId, task, template, onClose, onSaved }: {
+function TaskDialog({ dayId, task, template, defaults, onClose, onSaved }: {
+  defaults: TaskDefaults;
   dayId: string;
   task: Task | null;
   template?: Partial<TaskForm>;
@@ -453,7 +458,7 @@ function TaskDialog({ dayId, task, template, onClose, onSaved }: {
 }) {
   const isNew = !task;
   const [form, setForm] = useState<TaskForm>(() =>
-    task ? taskToForm(task) : { ...defaultForm(template?.type ?? "prayer"), ...template });
+    task ? taskToForm(task, defaults) : { ...defaultForm(template?.type ?? "prayer", defaults), ...template });
   const [busy, setBusy] = useState(false);
   const set = (patch: Partial<TaskForm>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -465,7 +470,7 @@ function TaskDialog({ dayId, task, template, onClose, onSaved }: {
 
   function selectType(t: TaskType) {
     if (!isNew) return;
-    setForm((f) => ({ ...defaultForm(t), chapters: f.chapters, translation: f.translation }));
+    setForm((f) => ({ ...defaultForm(t, defaults), chapters: f.chapters }));
   }
 
   function applyPreset(p: TaskPreset) {
@@ -473,7 +478,7 @@ function TaskDialog({ dayId, task, template, onClose, onSaved }: {
       alert(`This preset is for a ${p.type} task; this task is ${form.type}.`);
       return;
     }
-    setForm((f) => presetToForm(p, f));
+    setForm((f) => presetToForm(p, f, defaults));
   }
 
   async function submit(e: React.FormEvent) {
@@ -482,7 +487,7 @@ function TaskDialog({ dayId, task, template, onClose, onSaved }: {
     try {
       const body: Record<string, unknown> = {
         title: form.title,
-        max_points: parseInt(form.maxPts, 10) || TASK_DEFAULTS.maxPoints,
+        max_points: parseInt(form.maxPts, 10) || defaults.maxPoints,
       };
       if (form.type === "prayer") {
         body.duration_minutes = parseInt(form.duration, 10) || null;
@@ -546,7 +551,7 @@ function TaskDialog({ dayId, task, template, onClose, onSaved }: {
           <div>
             <label className="label mb-1 block">Title</label>
             <input required className="input" value={form.title} onChange={(e) => set({ title: e.target.value })}
-              placeholder={form.type === "prayer" ? TASK_DEFAULTS.prayer.title : form.type === "reading" ? TASK_DEFAULTS.reading.title : "Journal entry"} />
+              placeholder={form.type === "prayer" ? defaults.prayer.title : form.type === "reading" ? defaults.reading.title : "Journal entry"} />
           </div>
 
           {form.type === "prayer" && (

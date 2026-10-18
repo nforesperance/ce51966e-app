@@ -1,4 +1,4 @@
-import { TASK_DEFAULTS } from "@/lib/appDefaults";
+import type { AppSettings } from "@/lib/appDefaults";
 import { zonedToUtc, minutesBetween } from "@/lib/time";
 
 export type PrayerTaskParams = {
@@ -12,7 +12,7 @@ export type PrayerTaskParams = {
 };
 
 // Prayer scoring:
-//   1. Actual prayer minutes (elapsed_seconds / 60) must be >= duration * 0.9, else 0.
+//   1. Actual prayer minutes (elapsed_seconds / 60) must be >= duration × minCompletionPercent, else 0.
 //   2. start_ratio: based on first_started_at vs target_start.
 //        - within ±full_marks_window → 1
 //        - earlier than -full_marks_window → 1 (no penalty for early)
@@ -22,7 +22,7 @@ export type PrayerTaskParams = {
 //        - later: linear decay, 0 at zero_marks_end_window minutes past target_end
 //   4. points = round(min(start_ratio, end_ratio) * max_points)
 export function scorePrayer({
-  task, programDate, programTimezone, firstStartedAt, completedAt, elapsedSeconds,
+  task, programDate, programTimezone, firstStartedAt, completedAt, elapsedSeconds, defaults,
 }: {
   task: PrayerTaskParams;
   programDate: string;
@@ -30,17 +30,19 @@ export function scorePrayer({
   firstStartedAt: Date;
   completedAt: Date;
   elapsedSeconds: number;
+  defaults: AppSettings["tasks"];
 }): number {
-  const max = task.max_points ?? TASK_DEFAULTS.maxPoints;
+  const prayer = defaults.prayer;
+  const max = task.max_points ?? defaults.maxPoints;
   const durMin = task.duration_minutes ?? 0;
 
-  if (durMin > 0 && elapsedSeconds < durMin * 60 * 0.9) return 0;
+  if (durMin > 0 && elapsedSeconds < durMin * 60 * (prayer.minCompletionPercent / 100)) return 0;
   if (!task.target_start_time || !durMin) return max;
 
-  const fullStart = task.full_marks_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksWindowMinutes;
-  const zeroStart = task.zero_marks_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksWindowMinutes;
-  const fullEnd = task.full_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.fullMarksEndWindowMinutes;
-  const zeroEnd = task.zero_marks_end_window_minutes ?? TASK_DEFAULTS.prayer.zeroMarksEndWindowMinutes;
+  const fullStart = task.full_marks_window_minutes ?? prayer.fullMarksWindowMinutes;
+  const zeroStart = task.zero_marks_window_minutes ?? prayer.zeroMarksWindowMinutes;
+  const fullEnd = task.full_marks_end_window_minutes ?? prayer.fullMarksEndWindowMinutes;
+  const zeroEnd = task.zero_marks_end_window_minutes ?? prayer.zeroMarksEndWindowMinutes;
 
   const targetStart = zonedToUtc(programDate, task.target_start_time, programTimezone);
   const targetEnd = new Date(targetStart.getTime() + durMin * 60_000);

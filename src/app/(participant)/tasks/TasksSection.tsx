@@ -23,18 +23,22 @@ export type UITask = {
   } | null;
 };
 
-export default function TasksSection({ tasks, locked = false }: { tasks: UITask[]; locked?: boolean }) {
+export default function TasksSection({ tasks, locked = false, minCompletionPercent }: {
+  tasks: UITask[]; locked?: boolean; minCompletionPercent: number;
+}) {
   return (
     <section>
       <p className="label mb-3">{locked ? "Upcoming tasks" : "Today's tasks"}</p>
       <div className="space-y-3">
-        {tasks.map((t) => <TaskRow key={t.id} task={t} locked={locked} />)}
+        {tasks.map((t) => <TaskRow key={t.id} task={t} locked={locked} minCompletionPercent={minCompletionPercent} />)}
       </div>
     </section>
   );
 }
 
-function TaskRow({ task: initial, locked }: { task: UITask; locked: boolean }) {
+function TaskRow({ task: initial, locked, minCompletionPercent }: {
+  task: UITask; locked: boolean; minCompletionPercent: number;
+}) {
   const [task, setTask] = useState(initial);
   const Icon = task.type === "prayer" ? Clock : task.type === "reading" ? BookOpen : ListChecks;
   const completed = !!task.completion?.completed_at;
@@ -60,7 +64,7 @@ function TaskRow({ task: initial, locked }: { task: UITask; locked: boolean }) {
           </div>
           {!locked && (
             <div className="mt-3">
-              {task.type === "prayer" && <PrayerControl task={task} onChange={setTask} />}
+              {task.type === "prayer" && <PrayerControl task={task} onChange={setTask} minCompletionPercent={minCompletionPercent} />}
               {task.type === "reading" && <ReadingControl task={task} onChange={setTask} />}
               {task.type === "other" && <OtherControl task={task} onChange={setTask} />}
             </div>
@@ -77,7 +81,9 @@ function fmt(totalSeconds: number) {
   return `${m}:${s}`;
 }
 
-function PrayerControl({ task, onChange }: { task: UITask; onChange: (t: UITask) => void }) {
+function PrayerControl({ task, onChange, minCompletionPercent }: {
+  task: UITask; onChange: (t: UITask) => void; minCompletionPercent: number;
+}) {
   const c = task.completion;
   const completed = !!c?.completed_at;
   const running = !!c?.started_at;
@@ -141,8 +147,9 @@ function PrayerControl({ task, onChange }: { task: UITask; onChange: (t: UITask)
   }
 
   const durSec = (task.duration_minutes ?? 0) * 60;
-  const enough = durSec === 0 || liveSec >= durSec * 0.9;
-  const minNeeded = durSec > 0 ? Math.ceil((task.duration_minutes ?? 0) * 0.9) : 0;
+  const minRatio = minCompletionPercent / 100;
+  const enough = durSec === 0 || liveSec >= durSec * minRatio;
+  const minNeeded = durSec > 0 ? Math.ceil((task.duration_minutes ?? 0) * minRatio) : 0;
 
   return (
     <div className="space-y-3">

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/session";
-import { TASK_DEFAULTS } from "@/lib/appDefaults";
+import { minDwellSeconds } from "@/lib/appDefaults";
+import { getAppSettings } from "@/lib/settings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadActionableTaskForUser } from "@/lib/tasks";
-import { fetchChapter, getNthWord, minDwellSeconds, normalizeWord, WORD_KIND_LABEL } from "@/lib/bibleApi";
+import { fetchChapter, getNthWord, normalizeWord, WORD_KIND_LABEL } from "@/lib/bibleApi";
 
 const Body = z.object({
   chapter: z.string().min(1).max(200),
@@ -45,7 +46,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
   }
 
   // Validate dwell time: roughly matches our server's estimated minimum.
-  const minSec = minDwellSeconds(ch.word_count);
+  const settings = await getAppSettings();
+  const minSec = minDwellSeconds(ch.word_count, settings.tasks.reading);
   if (parsed.data.dwell_seconds + 2 < minSec) {
     return NextResponse.json(
       { error: `Please spend at least ${minSec}s reading this chapter.` },
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ taskId: st
   if (allDone) {
     completionPatch.completed_at = now;
     completionPatch.marked_complete_at = now;
-    completionPatch.points_awarded = task.max_points ?? TASK_DEFAULTS.maxPoints;
+    completionPatch.points_awarded = task.max_points ?? settings.tasks.maxPoints;
   }
 
   if (existing) {

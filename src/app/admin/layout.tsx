@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
-import { Users, CalendarDays, LayoutDashboard, Trophy } from "lucide-react";
+import { Users, CalendarDays, LayoutDashboard, Settings, Trophy } from "lucide-react";
 import AdminHeader from "@/components/AdminHeader";
 
 const nav = [
@@ -9,6 +9,7 @@ const nav = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/programs", label: "Programs", icon: CalendarDays },
   { href: "/admin/leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

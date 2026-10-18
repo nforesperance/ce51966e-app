@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import NewProgramButton from "./NewProgramButton";
+import { getAppSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function ProgramsPage() {
     <div>
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-semibold">Programs</h1>
-        <NewProgramButton />
+        <NewProgramButton defaults={(await getAppSettings()).program} />
       </div>
       {enriched.length === 0 ? (
         <div className="card p-6 text-fg-muted">No programs yet. Create one to start.</div>

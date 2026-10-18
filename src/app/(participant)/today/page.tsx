@@ -5,7 +5,9 @@ import { getSessionUser } from "@/lib/auth/session";
 import { loadToday } from "@/lib/loadToday";
 import BottomNav from "@/components/BottomNav";
 import LockedBanner from "@/components/LockedBanner";
-import CardPreview, { type CardConfig } from "@/components/CardPreview";
+import CardPreview from "@/components/CardPreview";
+import { resolveCardConfig, type CardConfig } from "@/lib/cardConfig";
+import { getAppSettings } from "@/lib/settings";
 import ProgramSwitcher from "@/components/ProgramSwitcher";
 
 export const dynamic = "force-dynamic";
@@ -26,10 +28,11 @@ export default async function TodayPage() {
   }
 
   const { program, day, prayerPoint, locked, lockedUntilIso, allTodayDone, availablePrograms } = data;
-  const effectiveCardConfig: CardConfig = {
-    ...(program.card_defaults as CardConfig),
-    ...((prayerPoint?.card_config ?? {}) as CardConfig),
-  };
+  const effectiveCardConfig = resolveCardConfig(
+    (await getAppSettings()).card,
+    program.card_defaults as CardConfig,
+    prayerPoint?.card_config as CardConfig | undefined,
+  );
 
   return (
     <div className="pt-3 pb-16">
